@@ -24,19 +24,22 @@ SOFTWARE.
 #include "Exception.h"
 #include <cassert>
 #include <vector>
+#include <set>
 namespace LLUtils
 {
     template <typename T, typename Container = std::set<T>>
     class UniqueIdProvider
     {
+	public:
+		using underlying_type = T;
     private:
         //Note: Do not change the order of the members deceleration
         // if its inevitable keep 'fFreeIds' prior to 'fFreeIdsEnd'
-
         Container fFreeIds;
         const typename Container::const_iterator fFreeIdsEnd;
         const T fStartID;
         T fNextId;
+
 
     public:
         UniqueIdProvider(const T startID = 0) : fNextId(startID), fStartID(startID), fFreeIdsEnd(fFreeIds.end())

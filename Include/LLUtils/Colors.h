@@ -149,8 +149,8 @@ namespace LLUtils
         const Color Cadmiumorange = 0XED872D;
         const Color Cadmiumred = 0XE30022;
         const Color Cadmiumyellow = 0XFFF600;
-        const Color Caféaulait = 0XA67B5B;
-        const Color Cafénoir = 0X4B3621;
+        const Color Cafeaulait = 0XA67B5B;
+        const Color Cafenoir = 0X4B3621;
         const Color CalPolyPomonagreen = 0X1E4D2B;
         const Color Cambridgeblue = 0XA3C1AD;
         const Color Camel = 0XC19A6B;
@@ -377,7 +377,7 @@ namespace LLUtils
         const Color Gray_HTML_CSSgray = 0X808080;
         const Color Gray_X11gray = 0XBEBEBE;
         const Color Green = 0X00FF00;
-        const Color Green_X11, colorwheel = 0X00FF00;
+        const Color Green_X11_colorwheel = 0X00FF00;
         const Color Green_Crayola = 0X1CAC78;
         const Color Green_HTML_CSScolor = 0X008000;
         const Color Green_Munsell = 0X00A877;
@@ -886,7 +886,7 @@ namespace LLUtils
         const Color Teal = 0X008080;
         const Color Tealblue = 0X367588;
         const Color Telemagenta = 0XCF3476;
-        const Color Tenné_tawny = 0XCD5700;
+        const Color Tenne_tawny = 0XCD5700;
         const Color Terracotta = 0XE2725B;
         const Color Thistle = 0XD8BFD8;
         const Color Thulianpink = 0XDE6FA1;

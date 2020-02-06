@@ -22,6 +22,7 @@ SOFTWARE.
 
 #pragma once
 #include <filesystem>
+#include <cassert>
 
 namespace LLUtils
 {
@@ -38,4 +39,6 @@ namespace LLUtils
             return (num + (alignement - 1)) / alignement * alignement;
         }
     };
+
+    #define LLUTILS_ASSERT assert
 }

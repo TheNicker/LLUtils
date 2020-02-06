@@ -22,7 +22,6 @@ SOFTWARE.
 
 #pragma once
 #include <set>
-#include <StringDefs.h>
 #include <filesystem>
 #include "StringUtility.h"
 namespace LLUtils

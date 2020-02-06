@@ -21,7 +21,7 @@ SOFTWARE.
 */
 
 #pragma once
-#include <Platform.h>
+#include "Platform.h"
 #include <string>
 #include <vector>
 #include <sstream>
@@ -103,6 +103,12 @@ namespace LLUtils
 		{
 			return ConvertStringImp(str);
 		}
+
+		static std::string ToAString(const std::wstring str)
+		{
+			return ConvertStringImp(str);
+		}
+
 		static std::string ToAString(const wchar_t* str)
 		{
 			return ConvertStringImp(str);

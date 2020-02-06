@@ -95,7 +95,7 @@ namespace LLUtils
             blended.R = (source.A * source.R + invSourceAlpha * R) / 0xFF;
             blended.G = (source.A * source.G + invSourceAlpha * G) / 0xFF;
             blended.B = (source.A * source.B + invSourceAlpha * B) / 0xFF;
-            blended.A = std::max(A, source.A);
+            blended.A = (std::max)(A, source.A);
             return blended;
         }
         static Color FromString(const std::string& str)

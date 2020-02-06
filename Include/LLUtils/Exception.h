@@ -46,6 +46,7 @@ namespace LLUtils
             , NotImplemented
             , InvalidState
             , SystemError
+			, NotFound
             , __Count__
         };
 

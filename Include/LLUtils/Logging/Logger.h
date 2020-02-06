@@ -23,10 +23,10 @@ SOFTWARE.
 #pragma once
 #include <mutex>
 #include <iostream>
-#include "FileSystemHelper.h"
-#include "FileHelper.h"
-#include "PlatformUtility.h"
-#include "Singleton.h"
+#include "../FileSystemHelper.h"
+#include "../FileHelper.h"
+#include "../PlatformUtility.h"
+#include "../Singleton.h"
 #include "LogTarget.h"
 #include "LogPredefined.h"
 

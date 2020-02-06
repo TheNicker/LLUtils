@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "StringDefs.h"
 #include "Utility.h"
-#include <StringUtility.h>
+#include "StringUtility.h"
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 
@@ -64,7 +64,7 @@ namespace LLUtils
         {
 			StackTrace stackTrace;
 
-#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
 			constexpr size_t MaxStackTraceSize = std::numeric_limits<USHORT>::max();
             
 			static thread_local std::array<void*, MaxStackTraceSize> stack;

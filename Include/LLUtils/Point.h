@@ -77,11 +77,11 @@ namespace LLUtils
             return Point(abs(x), abs(y));
         }
         
-        template< typename = typename std::enable_if_t< std::is_floating_point< POINT_TYPE >::value> >
-            Point Round() const
-            {
-                return { std::round(x) , std::round(y) };
-            }
+
+		Point Round() const
+		{
+			return { std::round(x) , std::round(y) };
+		}
 
 
         Point Sqrt() const
