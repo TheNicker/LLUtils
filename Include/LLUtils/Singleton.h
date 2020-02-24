@@ -38,10 +38,14 @@ namespace LLUtils
                     instance = std::unique_ptr<T>(new T());// std::make_unique<T>();
                 
             }
+            void Destroy()
+            {
+                instance.reset();
+            }
 
             ~Context()
             {
-                instance.reset();
+                Destroy();
             }
         };
 
@@ -55,7 +59,7 @@ namespace LLUtils
 
         static void DeleteSingleton()
         {
-            sContext = Context();
+            sContext.Destroy();
         }
 
     protected:
