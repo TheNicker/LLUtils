@@ -73,20 +73,31 @@ namespace LLUtils
     {
     public:
         using Allocator = Alloc;
-        BufferBase(const BufferBase&) = delete;
-        BufferBase& operator=(const BufferBase&) = delete;
-        BufferBase() = default;
+        BufferBase(const BufferBase& rhs)
+        {
+            *this = Clone(rhs);
+            
+        }
+        
+        BufferBase& operator=(const BufferBase& rhs)
+        {
+            *this = rhs.Clone();
+            return *this;
+        }
+        
+
+        BufferBase() {}
         BufferBase(size_t size)
         {
             Allocate(size);
         }
 
-        void operator=(BufferBase&& rhs)
+        void operator=(BufferBase&& rhs) noexcept
         {
             Swap(std::move(rhs));
         }
 
-        BufferBase(BufferBase&& rhs)
+        BufferBase(BufferBase&& rhs) noexcept
         {
             Swap(std::move(rhs));
         }
