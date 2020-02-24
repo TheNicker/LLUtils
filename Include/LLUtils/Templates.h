@@ -39,5 +39,11 @@ T constexpr GetMaxBitsMask()
     return  (((static_cast<T>(1) << (sizeof(T) * static_cast<T>(8) - static_cast<T>(1))) - static_cast<T>(1)) << static_cast<T>(1)) + static_cast<T>(1);
 }
 
+template<size_t LENGTH, class T>
+constexpr inline size_t array_length(T(&arr)[LENGTH]) { return LENGTH; }
+
+template<size_t LENGTH, class T>
+constexpr inline size_t array_size(T(&arr)[LENGTH]) { return array_length(arr) * sizeof(T); }
+
 
 }
