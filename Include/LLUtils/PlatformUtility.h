@@ -60,7 +60,7 @@ namespace LLUtils
 
         using StackTrace = std::vector<StackTraceEntry>;
 
-        static StackTrace GetCallStack(int framesToSkip = 0)
+        static StackTrace GetCallStack([[maybe_unused]] int framesToSkip = 0)
         {
 			StackTrace stackTrace;
 
@@ -180,7 +180,7 @@ namespace LLUtils
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
         static HANDLE CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, const std::byte* buffer)
         {
-            BITMAPINFOHEADER bi = { 0 };
+            BITMAPINFOHEADER bi{};
 
             bi.biSize = sizeof(BITMAPINFOHEADER);
             bi.biWidth = width;

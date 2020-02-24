@@ -42,10 +42,23 @@ namespace LLUtils
 
 
     public:
-        UniqueIdProvider(const T startID = 0) : fNextId(startID), fStartID(startID), fFreeIdsEnd(fFreeIds.end())
+        UniqueIdProvider(const T startID = 0) : fFreeIdsEnd(fFreeIds.end()) , fStartID(startID) , fNextId(startID)
         {
 
         }
+
+        underlying_type GetNextID() const
+        {
+            return fNextId;
+        }
+
+
+        underlying_type GetStartID() const
+        {
+            return fStartID;
+        }
+
+        
 
         const T Acquire()
         {
@@ -78,9 +91,19 @@ namespace LLUtils
         template <typename = typename std::enable_if_t<!IsVector>>
         void Release(const T id)
         {
-            ThrowException("Trying to release an id that has never been acquired", id < fNextId && id >= fStartID);
+
+        #ifdef DEBUG
+            if (!(id < fNextId && id >= fStartID))
+                LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "Trying to release an id that has never been acquired");
+        #endif
+
             auto result = fFreeIds.insert(id);
-            ThrowException("id already released", result.second);
+
+#ifdef DEBUG
+            if (result.second == false)
+                LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "id already released");
+#endif
+
         }
         
         void Normalize()
@@ -91,13 +114,6 @@ namespace LLUtils
                 fFreeIds.erase(it);
                 fNextId--;
             }
-        }
-
-        void ThrowException(const std::string& message, const bool condition) const
-        {
-            if (condition == false)
-                LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, message);
-
         }
     };
 }
