@@ -99,11 +99,8 @@ namespace LLUtils
 
             auto result = fFreeIds.insert(id);
 
-#ifdef DEBUG
             if (result.second == false)
                 LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "id already released");
-#endif
-
         }
         
         void Normalize()
