@@ -41,6 +41,7 @@ namespace LLUtils
         constexpr inline bool test(T rhs) const { return (mValue & rhs) == rhs; }
         constexpr inline void set(T rhs) { mValue |= rhs; }
         constexpr inline void clear(T rhs) { mValue &= ~rhs; }
+        constexpr inline T get() const { return mValue;}
 
     private:
         T mValue;
