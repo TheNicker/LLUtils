@@ -27,10 +27,14 @@ SOFTWARE.
 
 namespace LLUtils
 {
-#if defined(UNICODE) || defined(_UNICODE)
+
+
+#if LLUTILS_CHARSET ==  LLUTILS_CHARSET_UNICODE
     using native_char_type = wchar_t;
+#define LLUTILS_TEXT(T) L##T
 #else
 	using native_char_type = char;
+#define LLUTILS_TEXT(T) T
 #endif
     using native_string_type = std::basic_string<native_char_type>;
     using native_stringstream = std::basic_stringstream<native_char_type>;

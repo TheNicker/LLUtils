@@ -43,6 +43,10 @@ namespace LLUtils
 #define LLUTILS_ARCHITECTURE_32 1
 #define LLUTILS_ARCHITECTURE_64 2
 
+#define LLUTILS_CHARSET_ASCI 1
+#define LLUTILS_CHARSET_UNICODE 2
+
+
     /* Finds the compiler type and version.
     */
 #if (defined( __WIN32__ ) || defined( _WIN32 )) && defined(__ANDROID__) // We are using NVTegra
@@ -171,4 +175,12 @@ namespace LLUtils
     //  Error, compiler must supoport symbol export.
     #pragma error Unknown dynamic link import/export semantics.
 #endif
+
+
+#if defined(UNICODE) || defined(_UNICODE)
+    #define LLUTILS_CHARSET LLUTILS_CHARSET_UNICODE
+#else
+    #define LLUTILS_CHARSET LLUTILS_CHARSET_ANSI
+#endif
+
 }
