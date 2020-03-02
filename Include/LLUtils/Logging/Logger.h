@@ -29,6 +29,7 @@ SOFTWARE.
 #include "../Singleton.h"
 #include "LogTarget.h"
 #include "LogPredefined.h"
+#include "../TimeStamp.h"
 
 namespace LLUtils
 {
@@ -91,14 +92,17 @@ namespace LLUtils
 
 		void Log(std::wstring message)
 		{
-			std::wstring messageWithNewLine = message + L"\n";
+			using namespace std::string_literals;
+			std::wstring messageWithNewLineAndTimeStamp = L"["s + LLUtils::TimeStamp::Now() + L"] "s + message + L"\n";
+			
 			for (auto& target : logTargets)
-				target->Log(messageWithNewLine);
+				target->Log(messageWithNewLineAndTimeStamp);
 		}
 	private:
 		using ListLogTargets = std::vector<std::shared_ptr<ILog>>;
 		ListLogTargets listPredefinedLogs = ListLogTargets(static_cast<int>(TargetType::Count));
 		std::vector<ILog*> logTargets;
+
 	};
 
 
