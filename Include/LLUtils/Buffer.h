@@ -24,6 +24,7 @@ SOFTWARE.
 #include <memory>
 #include <stdexcept>
 #include <cstring>
+#include <cstddef>
 #include <LLUtils/Platform.h>
 
 namespace LLUtils
@@ -114,8 +115,13 @@ namespace LLUtils
 
         BufferBase Clone() const
         {
-            BufferBase cloned(fSize);
-            cloned.Write(fData, 0, fSize);
+            BufferBase cloned;
+            if (fSize > 0)
+            {
+                cloned.Allocate(fSize);
+                cloned.Write(fData, 0, fSize);
+            }
+
             return cloned;
         }
 
