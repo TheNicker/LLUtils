@@ -76,7 +76,7 @@ namespace LLUtils
         using Allocator = Alloc;
         BufferBase(const BufferBase& rhs)
         {
-            *this = Clone(rhs);
+            *this = rhs.Clone();
             
         }
         

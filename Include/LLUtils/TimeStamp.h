@@ -61,7 +61,7 @@ namespace LLUtils
     {
 
     private:
-#ifdef LLUTILS_TIMESTAMP_TECHNIQUE == LLUTILS_TIMESTAMP_TECHNIQUE_WINDOWS_GETTIME
+#if LLUTILS_TIMESTAMP_TECHNIQUE == LLUTILS_TIMESTAMP_TECHNIQUE_WINDOWS_GETTIME
         static native_string_type GetTimeStampWindows()
         {
             SYSTEMTIME time;
@@ -110,7 +110,7 @@ namespace LLUtils
         }
 #endif
 
-#ifdef LLUTILS_TIMESTAMP_TECHNIQUE == LLUTILS_TIMESTAMP_TECHNIQUE_GETTIMEOFDAY
+#if LLUTILS_TIMESTAMP_TECHNIQUE == LLUTILS_TIMESTAMP_TECHNIQUE_GETTIMEOFDAY
         static native_string_type GetTimeStampTimeOfDay()
         {
             LL_EXCEPTION_NOT_IMPLEMENT("time of day is not implemented");
@@ -139,7 +139,7 @@ namespace LLUtils
     public:
         static native_string_type Now()
         {
-#ifdef LLUTILS_TIMESTAMP_TECHNIQUE == LLUTILS_TIMESTAMP_TECHNIQUE_WINDOWS_GETTIME
+#if LLUTILS_TIMESTAMP_TECHNIQUE == LLUTILS_TIMESTAMP_TECHNIQUE_WINDOWS_GETTIME
                 return GetTimeStampWindows();
 #elif LLUTILS_TIMESTAMP_TECHNIQUE == LLUTILS_TIMESTAMP_TECHNIQUE_GETTIMEOFDAY
                 return GetTimeStampTimeOfDay();
