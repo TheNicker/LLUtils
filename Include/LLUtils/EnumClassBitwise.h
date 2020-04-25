@@ -26,68 +26,60 @@ SOFTWARE.
 #include <type_traits>
 
 #if 1
-#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(Enum) \
+#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_EMPTY_TOKEN
+
+#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IMPL(Enum,PREFIX) \
 \
-     constexpr inline Enum& operator~ (Enum& val)\
+    PREFIX constexpr inline Enum operator~ (Enum val)\
     {\
         val = static_cast<Enum>(~static_cast<std::underlying_type_t<Enum>>(val));\
         return val;\
     }\
 		\
-    constexpr inline Enum operator& (Enum lhs, Enum rhs)\
+    PREFIX constexpr inline Enum operator& (Enum lhs, Enum rhs)\
     {\
         return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));\
     }\
-		\
-    constexpr inline Enum operator&= (Enum& lhs, Enum rhs)\
+	\
+    PREFIX constexpr inline Enum operator<< (Enum lhs, std::underlying_type_t<Enum> rhs)\
+    {\
+        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) << rhs);\
+    }\
+	\
+    PREFIX constexpr inline Enum operator>> (Enum lhs, std::underlying_type_t<Enum> rhs)\
+    {\
+        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) >> rhs);\
+    }\
+	\
+    PREFIX constexpr inline Enum operator&= (Enum& lhs, Enum rhs)\
     {\
         lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));\
         return lhs;\
     }\
 	\
-    constexpr inline Enum operator| (Enum lhs, Enum rhs)\
+    PREFIX constexpr inline Enum operator| (Enum lhs, Enum rhs)\
     {\
         return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));\
     }\
 	\
-    constexpr inline Enum& operator|= (Enum& lhs, Enum rhs)\
+    PREFIX constexpr inline Enum& operator|= (Enum& lhs, Enum rhs)\
     {\
         lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));\
         return lhs;\
     }\
-
-
-#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS(Enum) \
-\
-    friend constexpr inline Enum& operator~ (Enum& val)\
+    PREFIX constexpr inline Enum& operator<<= (Enum& lhs, std::underlying_type_t<Enum> rhs)\
     {\
-        val = static_cast<Enum>(~static_cast<std::underlying_type_t<Enum>>(val));\
-        return val;\
-    }\
-		\
-    friend constexpr inline Enum operator& (Enum lhs, Enum rhs)\
-    {\
-        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));\
-    }\
-		\
-    friend constexpr inline Enum operator&= (Enum& lhs, Enum rhs)\
-    {\
-        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));\
+        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) << rhs);\
         return lhs;\
     }\
-	\
-    friend constexpr inline Enum operator| (Enum lhs, Enum rhs)\
+    PREFIX constexpr inline Enum& operator>>= (Enum& lhs, std::underlying_type_t<Enum> rhs)\
     {\
-        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));\
-    }\
-	\
-    friend constexpr inline Enum& operator|= (Enum& lhs, Enum rhs)\
-    {\
-        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));\
+        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) >> rhs);\
         return lhs;\
     }\
 
-
+#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(ENUM) LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IMPL(ENUM,LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_EMPTY_TOKEN )
+#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS(ENUM) LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IMPL(ENUM,friend )
 
 
 #else
