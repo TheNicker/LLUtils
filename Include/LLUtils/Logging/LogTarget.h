@@ -21,6 +21,7 @@ SOFTWARE.
 */
 #pragma once
 #include <memory>
+#include <string>
 namespace LLUtils
 {
 	// Abstract Log target.

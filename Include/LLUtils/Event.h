@@ -31,7 +31,7 @@ namespace LLUtils
     void* getAddress(std::function<T(U...)> f) {
         typedef T(fnType)(U...);
         fnType ** fnPointer = f.template target<fnType*>();
-        return fnPointer != nullptr ? *fnPointer : nullptr;
+        return fnPointer != nullptr ? reinterpret_cast<void*>(*fnPointer) : nullptr;
     }
 
 	template <class T>

@@ -69,6 +69,8 @@ namespace LLUtils
 			case TargetType::OutputDebug:
 				predefineLog = std::make_shared<LogDebug>();
 				break;
+			default:
+				LL_EXCEPTION_UNEXPECTED_VALUE;
 
 			}
 

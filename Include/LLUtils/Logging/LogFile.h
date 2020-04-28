@@ -28,7 +28,7 @@ SOFTWARE.
 
 namespace LLUtils
 {
-	class LogFile : public ILog
+	class final LogFile : public ILog
 	{
 	public:
 		LogFile(std::wstring logPath, bool clear)

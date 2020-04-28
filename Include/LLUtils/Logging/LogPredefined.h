@@ -23,7 +23,7 @@ SOFTWARE.
 #pragma once
 namespace LLUtils
 {
-	class LogConsole : public ILog
+	class LogConsole final : public ILog
 	{
 		void Log(std::wstring message) override
 		{
@@ -31,7 +31,7 @@ namespace LLUtils
 		}
 	};
 
-	class LogDebug : public ILog
+	class LogDebug final : public ILog
 	{
 		void Log(std::wstring message) override
 		{
@@ -39,7 +39,7 @@ namespace LLUtils
 		}
 	};
 
-	class LogFile : public ILog
+	class LogFile final : public ILog
 	{
 	public:
 		LogFile(std::wstring logPath, bool clear)
