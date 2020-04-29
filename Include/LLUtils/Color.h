@@ -90,6 +90,32 @@ namespace LLUtils
 			return this->colorValue != rhs.colorValue;
 		}
 
+        static Color FromHSL(uint16_t hue, double sat, double lum)
+        {
+            uint8_t r = 0;
+            uint8_t g = 0;
+            uint8_t b = 0;
+
+            if (sat == 0)
+            {
+                r = g = b = static_cast<uint8_t>(lum * 255);
+            }
+            else
+            {
+                double v1, v2;
+                const double hueNormalized = static_cast<double>(hue) / 360.0;
+
+                v2 = (lum < 0.5) ? (lum * (1.0 + sat)) : ((lum + sat) - (lum * sat));
+                v1 = 2.0 * lum - v2;
+
+                r = static_cast<uint8_t>(255.0 * HueToRGB(v1, v2, hueNormalized + (1.0 / 3.0)));
+                g = static_cast<uint8_t>(255.0 * HueToRGB(v1, v2, hueNormalized));
+                b = static_cast<uint8_t>(255.0 * HueToRGB(v1, v2, hueNormalized - (1.0 / 3.0)));
+            }
+
+            return { r,g,b };
+        }
+
         Color Blend(const Color& source)
         {
             Color blended;
@@ -142,5 +168,25 @@ namespace LLUtils
             }
             return c;
         }
+
+        private:
+            static double HueToRGB(double v1, double v2, double vH) {
+                if (vH < 0)
+                    vH += 1;
+
+                if (vH > 1)
+                    vH -= 1;
+
+                if ((6 * vH) < 1)
+                    return (v1 + (v2 - v1) * 6 * vH);
+
+                if ((2 * vH) < 1)
+                    return v2;
+
+                if ((3 * vH) < 2)
+                    return (v1 + (v2 - v1) * ((2.0f / 3) - vH) * 6);
+
+                return v1;
+            }
     };
 }
