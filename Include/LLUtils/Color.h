@@ -24,6 +24,7 @@ SOFTWARE.
 #include <algorithm>
 #include <string>
 #include <cmath>
+#include <array>
 
 namespace LLUtils
 {
@@ -39,15 +40,16 @@ namespace LLUtils
         };
 
         template <class T>
-        const T* GetNormalizedColorValue() const
+        const std::array<T,4> GetNormalizedColorValue() const
         {
             static_assert(std::is_floating_point<T>(), "Only floating point support normilization");
-            static thread_local T normalizedColor[4];
-            normalizedColor[0] = R / static_cast<T>(255.0);
-            normalizedColor[1] = G / static_cast<T>(255.0);
-            normalizedColor[2] = B / static_cast<T>(255.0);
-            normalizedColor[3] = A / static_cast<T>(255.0);
-            return normalizedColor;
+
+            return  {
+                      R / static_cast<T>(255.0)
+                    , G / static_cast<T>(255.0)
+                    , B / static_cast<T>(255.0)
+                    , A / static_cast<T>(255.0)
+                    };
         }
         Color() = default;
 		
