@@ -30,14 +30,21 @@ namespace LLUtils
 {
     struct Color
     {
-        union
+        uint32_t colorValue;
+        uint8_t& R = *(reinterpret_cast<uint8_t*>(&colorValue) + 0);
+        uint8_t& G = *(reinterpret_cast<uint8_t*>(&colorValue) + 1);
+        uint8_t& B = *(reinterpret_cast<uint8_t*>(&colorValue) + 2);
+        uint8_t& A = *(reinterpret_cast<uint8_t*>(&colorValue) + 3);
+
+        Color& operator=(const Color& color)
         {
-            struct
-            {
-                uint8_t R, G, B, A;
-            };
-            uint32_t colorValue;
-        };
+            colorValue = color.colorValue;
+            R = *(reinterpret_cast<uint8_t*>(&colorValue) + 0);
+            G = *(reinterpret_cast<uint8_t*>(&colorValue) + 1);
+            B = *(reinterpret_cast<uint8_t*>(&colorValue) + 2);
+            A = *(reinterpret_cast<uint8_t*>(&colorValue) + 3);
+            return *this;
+        }
 
         template <class T>
         const std::array<T,4> GetNormalizedColorValue() const
@@ -55,25 +62,24 @@ namespace LLUtils
 		
 		//Floating point constructor
 		template <typename ParamType, typename std::enable_if_t<std::is_floating_point_v<ParamType>, int> = 0>
-		Color(ParamType r, ParamType g, ParamType b, ParamType a = 1.0) :
-              R(static_cast<uint8_t>(std::round(r * 255.0)))
-			, G(static_cast<uint8_t>(std::round(g * 255.0)))
-			, B(static_cast<uint8_t>(std::round(b * 255.0)))
-			, A(static_cast<uint8_t>(std::round(a * 255.0)))
+		Color(ParamType r, ParamType g, ParamType b, ParamType a = 1.0) 
 		{
+            R = static_cast<uint8_t>(std::round(r * 255.0));
+            G = static_cast<uint8_t>(std::round(g * 255.0));
+            B = static_cast<uint8_t>(std::round(b * 255.0));
+            A = static_cast<uint8_t>(std::round(a * 255.0));
 		}
 
 
 		//Intergal constructor
 		template <typename ParamType, typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
-		Color(ParamType r, ParamType g, ParamType b, ParamType a = 255) :
-              R(static_cast<uint8_t>(r))
-			, G(static_cast<uint8_t>(g))
-			, B(static_cast<uint8_t>(b))
-			, A(static_cast<uint8_t>(a))
-
-		{
-		}
+        Color(ParamType r, ParamType g, ParamType b, ParamType a = 255)
+        {
+            R = static_cast<uint8_t>(r);
+            G = static_cast<uint8_t>(g);
+            B = static_cast<uint8_t>(b);
+            A = static_cast<uint8_t>(a);
+        }
      
         Color(uint32_t color)
         {

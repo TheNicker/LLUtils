@@ -40,7 +40,7 @@ T constexpr GetMaxBitsMask()
 }
 
 template<size_t LENGTH, class T>
-constexpr inline size_t array_length(T(&arr)[LENGTH]) { return LENGTH; }
+constexpr inline size_t array_length([[maybe_unused]] T(&arr)[LENGTH]) { return LENGTH; }
 
 template<size_t LENGTH, class T>
 constexpr inline size_t array_size(T(&arr)[LENGTH]) { return array_length(arr) * sizeof(T); }
