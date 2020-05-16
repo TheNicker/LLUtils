@@ -36,13 +36,26 @@ namespace LLUtils
         uint8_t& B = *(reinterpret_cast<uint8_t*>(&colorValue) + 2);
         uint8_t& A = *(reinterpret_cast<uint8_t*>(&colorValue) + 3);
 
+        Color(const Color& color)
+        {
+            colorValue = color.colorValue;
+        }
+
+        Color(Color&& color)
+        {
+            colorValue = color.colorValue;
+        }
+        
+
         Color& operator=(const Color& color)
         {
             colorValue = color.colorValue;
-            R = *(reinterpret_cast<uint8_t*>(&colorValue) + 0);
-            G = *(reinterpret_cast<uint8_t*>(&colorValue) + 1);
-            B = *(reinterpret_cast<uint8_t*>(&colorValue) + 2);
-            A = *(reinterpret_cast<uint8_t*>(&colorValue) + 3);
+            return *this;
+        }
+
+        Color& operator=(Color&& color)
+        {
+            colorValue = color.colorValue;
             return *this;
         }
 
