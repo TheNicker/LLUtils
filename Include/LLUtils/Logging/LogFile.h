@@ -21,14 +21,14 @@ SOFTWARE.
 */
 
 #pragma once
-#include "FileSystemHelper.h"
-#include "FileHelper.h"
-#include "PlatformUtility.h"
+#include "../FileSystemHelper.h"
+#include "../FileHelper.h"
+#include "../PlatformUtility.h"
 #include "LogTarget.h"
 
 namespace LLUtils
 {
-	class final LogFile : public ILog
+	class LogFile final : public ILog
 	{
 	public:
 		LogFile(std::wstring logPath, bool clear)
