@@ -55,10 +55,10 @@ namespace LLUtils
 
         Rect Intersection(const Rect& rect)
         {
-            T x0 = std::max(p0.x, rect.p0.x);
-            T x1 = std::min(p1.x, rect.p1.x);
-            T y0 = std::max(p0.y, rect.p0.y);
-            T y1 = std::min(p1.y, rect.p1.y);
+            T x0 = (std::max)(p0.x, rect.p0.x);
+            T x1 = (std::min)(p1.x, rect.p1.x);
+            T y0 = (std::max)(p0.y, rect.p0.y);
+            T y1 = (std::min)(p1.y, rect.p1.y);
 
             return{ {x0,y0},{x1,y1}};
             
