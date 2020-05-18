@@ -23,6 +23,7 @@ SOFTWARE.
 #pragma once
 #include "Platform.h"
 #include <string>
+#include <cstring>
 #include <vector>
 #include <sstream>
 #include <algorithm>
@@ -173,7 +174,7 @@ namespace LLUtils
 		private:
 			static std::wstring ConvertStringImp(const char* sourceString)
 			{
-				const std::size_t size = (strlen(sourceString) + 1) * 2;
+				const std::size_t size = (std::strlen(sourceString) + 1) * 2;
 				auto buf = std::make_unique<wchar_t[]>(size);
 				swprintf_s(buf.get(), size, L"%S", sourceString);
 				return std::wstring(buf.get());

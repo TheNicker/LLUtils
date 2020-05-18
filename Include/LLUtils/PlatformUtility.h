@@ -37,7 +37,7 @@ SOFTWARE.
 
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
-#pragma push_macro("max"); 
+#pragma push_macro("max")
 
 #undef max
 #endif
