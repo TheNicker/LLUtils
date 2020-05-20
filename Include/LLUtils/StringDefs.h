@@ -24,6 +24,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 #include <sstream>
+#include "Platform.h"
 
 namespace LLUtils
 {
