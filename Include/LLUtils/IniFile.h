@@ -36,7 +36,7 @@ namespace LLUtils
             }
         }
 
-        const std::string& GetEntry(const std::string& key, bool throwifNotFound = true)
+        const std::string& GetEntry(const std::string& key, bool throwifNotFound = true) const
         {
             using namespace LLUtils;
             std::string lowerKey = StringUtility::ToLower(key);
