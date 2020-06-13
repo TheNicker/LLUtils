@@ -31,9 +31,9 @@ namespace LLUtils
     struct Color
     {
         uint32_t colorValue;
-        uint8_t& R = *(reinterpret_cast<uint8_t*>(&colorValue) + 0);
+        uint8_t& B = *(reinterpret_cast<uint8_t*>(&colorValue) + 0);
         uint8_t& G = *(reinterpret_cast<uint8_t*>(&colorValue) + 1);
-        uint8_t& B = *(reinterpret_cast<uint8_t*>(&colorValue) + 2);
+    	uint8_t& R = *(reinterpret_cast<uint8_t*>(&colorValue) + 2);
         uint8_t& A = *(reinterpret_cast<uint8_t*>(&colorValue) + 3);
 
         Color(const Color& color)
