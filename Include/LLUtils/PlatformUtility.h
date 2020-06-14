@@ -364,7 +364,6 @@ namespace LLUtils
 					auto buffer = std::make_unique<char[]>(len);
 					if (GetLogicalProcessorInformationEx(RelationAll, (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX)buffer.get(), &len)) 
 					{
-						DWORD offset = 0;
 						char* ptr = buffer.get();
 						while (ptr < buffer.get() + len) 
 						{
@@ -378,8 +377,8 @@ namespace LLUtils
 							ptr += pi->Size;
 						}
 
-						result.physicalCores = static_cast<uint32_t>(cores);
-						result.logicalCores = static_cast<uint32_t>(logical);
+						result.physicalCores = static_cast<uint16_t>(cores);
+						result.logicalCores = static_cast<uint16_t>(logical);
 					}
 				}
 			}
