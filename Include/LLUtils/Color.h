@@ -25,6 +25,7 @@ SOFTWARE.
 #include <string>
 #include <cmath>
 #include <array>
+#include "StringUtility.h"
 
 namespace LLUtils
 {
@@ -147,45 +148,72 @@ namespace LLUtils
         }
         static Color FromString(const std::string& str)
         {
+            static const Color DefaultParseFailureColor = Color(0xFF, 0xFF, 0xFF, 0xFF);
+            constexpr uint8_t DefaultAlphaValue = 0xff;
             using namespace std;;
-            Color c = static_cast<uint32_t>(0xFF) << 24;
-            char strByteColor[3];
-            strByteColor[2] = 0;
-            if (str.length() > 0)
+
+            auto HexPairToByte = [](const std::array<char, 2>& hexByte) -> uint8_t
             {
-                if (str[0] == '#')
-                {
-                    string hexValues = str.substr(1);
-                    if (hexValues.length() > 8)
-                        hexValues.erase(hexValues.length());
+              return static_cast<uint8_t>(std::strtoul(hexByte.data(), nullptr, 16));
+            };
+			
+            Color c = static_cast<uint32_t>(0xFF) << 24;
+            std::array<std::uint8_t, 4>  colorBytes {};
+            std::string trimmed = str;
+            StringUtility::trim(trimmed, "\t\n\r ");
 
-                    size_t length = hexValues.length();
-                    size_t i = 0;
-                    while (i < length)
-                    {
-                        if (length - i >= 2)
-                        {
-                            strByteColor[0] = hexValues[i];
-                            strByteColor[1] = hexValues[i + 1];
-                            uint8_t val = static_cast<uint8_t>(std::strtoul(strByteColor, nullptr, 16));
-                            *(reinterpret_cast<uint8_t*>(&c.colorValue) + i / 2) = val;
-                            i += 2;
-                        }
-                        else if (length - i == 1)
-                        {
-                            strByteColor[0] = '0';
-                            strByteColor[1] = hexValues[i];
-                            uint8_t val = static_cast<uint8_t>(std::strtoul(strByteColor, nullptr, 16));
-                            *(reinterpret_cast<uint8_t*>(&c.colorValue) + i / 2) = val;
-                            i += 2;
-                        }
+            std::string::difference_type hexIndex = -1;
+            trimmed = StringUtility::ToLower(trimmed);
+            std::string_view view = std::string_view(trimmed.c_str(), trimmed.length());
 
-                    }
-
-                }
-
+			if (view.length() > 0 && view.at(0) == '#')
+            {
+                hexIndex = 1;
             }
-            return c;
+            else if (view.length() > 1 && view.substr(0,2) == "0x")
+                hexIndex = 2;
+
+            
+			if (hexIndex != -1 && view.length() > hexIndex)
+			{
+                constexpr uint8_t CharPerComponent = 2;
+                view = view.substr(hexIndex, view.length() - hexIndex);
+                bool lastSingleDigitComponent = view.length() % 2;
+				uint8_t numComponents = view.length() / CharPerComponent + (lastSingleDigitComponent ? 1 : 0);
+				if (numComponents > 4)
+				{
+                    numComponents = 4;
+                    lastSingleDigitComponent = false;
+				}
+				
+                const bool isAlphaChannel = numComponents == 4;
+                const uint8_t numColorChannels = (std::min<uint8_t>)(3, numComponents);
+
+				size_t componentsToProcessInLoop = isAlphaChannel ? numComponents - 1: numComponents - (lastSingleDigitComponent == true ? 1 : 0);
+				
+				size_t comp = 0;
+
+                if (view.empty() == false)
+
+				//Assign two bytes componenets
+				for (; comp < componentsToProcessInLoop;comp++)
+                    colorBytes.at(2 - comp) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) });
+
+                //Assign last single component, alpha or color.
+                if (lastSingleDigitComponent == true)
+                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({'0', view.at(comp * 2) });
+
+				//Assign default alpha if no alpha provided
+				if (isAlphaChannel == false)
+                    colorBytes.at(3) = DefaultAlphaValue;
+                else if (lastSingleDigitComponent == false) // if two components alpha.
+                    colorBytes.at(3) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) });
+
+				
+                return Color(*reinterpret_cast<uint32_t*>(colorBytes.data()));
+			}
+
+            return DefaultParseFailureColor;
         }
 
         private:
