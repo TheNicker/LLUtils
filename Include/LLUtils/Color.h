@@ -152,7 +152,7 @@ namespace LLUtils
             constexpr uint8_t DefaultAlphaValue = 0xff;
             using namespace std;;
 
-            auto HexPairToByte = [](const std::array<char, 2>& hexByte) -> uint8_t
+            auto HexPairToByte = [](const std::array<char, 3>& hexByte) -> uint8_t
             {
               return static_cast<uint8_t>(std::strtoul(hexByte.data(), nullptr, 16));
             };
@@ -197,17 +197,17 @@ namespace LLUtils
 
 				//Assign two bytes componenets
 				for (; comp < componentsToProcessInLoop;comp++)
-                    colorBytes.at(2 - comp) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) });
+                    colorBytes.at(2 - comp) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) ,0 });
 
                 //Assign last single component, alpha or color.
                 if (lastSingleDigitComponent == true)
-                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({'0', view.at(comp * 2) });
+                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({'0', view.at(comp * 2) ,0 });
 
 				//Assign default alpha if no alpha provided
 				if (isAlphaChannel == false)
                     colorBytes.at(3) = DefaultAlphaValue;
                 else if (lastSingleDigitComponent == false) // if two components alpha.
-                    colorBytes.at(3) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) });
+                    colorBytes.at(3) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) ,0 });
 
 				
                 return Color(*reinterpret_cast<uint32_t*>(colorBytes.data()));
