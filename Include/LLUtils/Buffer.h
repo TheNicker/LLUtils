@@ -27,6 +27,11 @@ SOFTWARE.
 #include <cstddef>
 #include <LLUtils/Platform.h>
 
+#if __has_include(<LLUtilsBufferCustomAllocator.h>)
+    #define LLUTILS_BUFFER_CUSTOM_ALLOCATOR 1
+    #include <LLUtilsBufferCustomAllocator.h>
+#endif
+
 namespace LLUtils
 {
     class STDAlloc
@@ -69,6 +74,13 @@ namespace LLUtils
     };
 
 
+#if LLUTILS_BUFFER_CUSTOM_ALLOCATOR == 1
+    using DefaultAllocator = CustomMemoryAllocator;
+#else
+    using DefaultAllocator = AlignedAlloc;
+#endif
+    
+    
     template <typename Alloc>
     class BufferBase
     {
@@ -77,7 +89,6 @@ namespace LLUtils
         BufferBase(const BufferBase& rhs)
         {
             *this = rhs.Clone();
-            
         }
         
         BufferBase& operator=(const BufferBase& rhs)
@@ -236,11 +247,9 @@ namespace LLUtils
                 fSize = 0;
             }
         }
-
         // private member fields
         std::byte* fData = nullptr;
         size_t fSize = 0;
     };
-
-    using Buffer = BufferBase<AlignedAlloc>;
+    using Buffer = BufferBase<DefaultAllocator>;
 }
