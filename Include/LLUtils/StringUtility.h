@@ -21,6 +21,10 @@ SOFTWARE.
 */
 
 #pragma once
+
+#pragma warning(push)
+#pragma warning(disable:4244) // when calling std::transform with ::tolower;
+
 #include "Platform.h"
 #include <string>
 #include <cstring>
@@ -158,7 +162,9 @@ namespace LLUtils
         {
             using namespace std;
             string_type localStr = str;
+
             std::transform(localStr.begin(), localStr.end(), localStr.begin(), ::tolower);
+
             return localStr;
         }
 
@@ -202,3 +208,5 @@ namespace LLUtils
 
     };
 }
+
+#pragma warning(pop)

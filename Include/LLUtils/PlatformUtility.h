@@ -24,8 +24,8 @@ SOFTWARE.
 #include <array>
 #include "Platform.h"
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
-#include <windows.h>
-#include <Shlobj.h>
+#include <Windows.h>
+#include <ShlObj.h>
 #include <DbgHelp.h>
 #endif
 
@@ -64,7 +64,7 @@ namespace LLUtils
         {
 			StackTrace stackTrace;
 
-#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && defined(LLUTILS_ENABLE_DEBUG_SYMBOLS) &&  LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
 			constexpr size_t MaxStackTraceSize = std::numeric_limits<USHORT>::max();
             
 			static thread_local std::array<void*, MaxStackTraceSize> stack;
@@ -183,13 +183,13 @@ namespace LLUtils
             BITMAPINFOHEADER bi{};
 
             bi.biSize = sizeof(BITMAPINFOHEADER);
-            bi.biWidth = width;
-            bi.biHeight = height;
+            bi.biWidth = static_cast<LONG>(width);
+            bi.biHeight = static_cast<LONG>(height);
             bi.biPlanes = 1;              // must be 1
             bi.biBitCount = bpp;          // from parameter
             bi.biCompression = BI_RGB;
 
-            DWORD dwBytesPerLine = LLUtils::Utility::Align((DWORD)bpp * width, (DWORD)(sizeof(DWORD) * 8)) / 8;
+            DWORD dwBytesPerLine = LLUtils::Utility::Align(static_cast<DWORD>(bpp * width), static_cast<DWORD>((sizeof(DWORD) * 8)) / 8);
             DWORD paletteSize = 0; // not supproted.
             DWORD dwLen = bi.biSize + paletteSize + (dwBytesPerLine * height);
 
@@ -201,11 +201,11 @@ namespace LLUtils
                 // lock memory and get pointer to it
                 void *dib = GlobalLock(hDIB);
 
-                *(BITMAPINFOHEADER*)(dib) = bi;
+                *reinterpret_cast<BITMAPINFOHEADER*>(dib) = bi;
 
-                void* pixelData = (BITMAPINFOHEADER*)(dib)+1;
+                void* pixelData = reinterpret_cast<BITMAPINFOHEADER*>(dib) + 1;
 
-                size_t size = bi.biWidth * bi.biHeight * (bi.biBitCount / 8);
+                size_t size = static_cast<size_t>(bi.biWidth * bi.biHeight * (bi.biBitCount / 8));
 
                 memcpy(pixelData, buffer, size);
                 GlobalUnlock(hDIB);
@@ -227,7 +227,7 @@ namespace LLUtils
 
         static default_string_type GetDllPath()
         {
-            return GetModulePath((HINSTANCE)&__ImageBase);
+            return GetModulePath(reinterpret_cast<HINSTANCE>(&__ImageBase));
         }
 
         static default_string_type GetDllFolder()
@@ -286,7 +286,7 @@ namespace LLUtils
                 }
 
             private:
-                HANDLE mTimer = CreateWaitableTimer(NULL, TRUE, NULL);
+                HANDLE mTimer = CreateWaitableTimer(nullptr, TRUE, nullptr);
                 LARGE_INTEGER mLargeIntener;
             };
             
@@ -314,12 +314,12 @@ namespace LLUtils
             if (typeid(CHAR_TYPE) == typeid(wchar_t))
             {
                 size = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                    NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<wchar_t*>(&messageBuffer), 0, NULL);
+                    nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<wchar_t*>(&messageBuffer), 0, nullptr);
             }
             else
             {
                 size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                    NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<char*>(&messageBuffer), 0, NULL);
+                    nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<char*>(&messageBuffer), 0, nullptr);
             }
 
             ustring message(messageBuffer, size);
@@ -340,7 +340,7 @@ namespace LLUtils
 		{
 			DWORD LSHIFT = sizeof(ULONG_PTR) * 8 - 1;
 			DWORD bitSetCount = 0;
-			ULONG_PTR bitTest = (ULONG_PTR)1 << LSHIFT;
+			ULONG_PTR bitTest = static_cast<ULONG_PTR>(1) << LSHIFT;
 			for (DWORD i = 0; i <= LSHIFT; ++i) {
 				bitSetCount += ((bitMask & bitTest) ? 1 : 0);
 				bitTest /= 2;
@@ -357,17 +357,17 @@ namespace LLUtils
 		{
 			CoresInfo result;
 			DWORD cores = 0, logical = 0, len = 0;
-			if (FALSE == GetLogicalProcessorInformationEx(RelationAll, (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX)nullptr, &len)) 
+			if (FALSE == GetLogicalProcessorInformationEx(RelationAll, nullptr, &len)) 
 			{
 				if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) 
 				{
 					auto buffer = std::make_unique<char[]>(len);
-					if (GetLogicalProcessorInformationEx(RelationAll, (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX)buffer.get(), &len)) 
+					if (GetLogicalProcessorInformationEx(RelationAll, reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer.get()), &len))
 					{
 						char* ptr = buffer.get();
 						while (ptr < buffer.get() + len) 
 						{
-							PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX pi = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX)ptr;
+							PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX pi = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(ptr);
 							if (pi->Relationship == RelationProcessorCore) {
 								cores++;
 								for (size_t g = 0; g < pi->Processor.GroupCount; ++g) {

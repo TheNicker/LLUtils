@@ -74,7 +74,7 @@ namespace LLUtils
     };
 
 
-#if LLUTILS_BUFFER_CUSTOM_ALLOCATOR == 1
+#if defined (LLUTILS_BUFFER_CUSTOM_ALLOCATOR) &&  LLUTILS_BUFFER_CUSTOM_ALLOCATOR == 1
     using DefaultAllocator = CustomMemoryAllocator;
 #else
     using DefaultAllocator = AlignedAlloc;

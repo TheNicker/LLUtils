@@ -111,9 +111,9 @@ namespace LLUtils
                 ,L"System error"
             };
 
-            size_t errorCodeInt = static_cast<int>(errorCode);
+            size_t errorCodeInt = static_cast<size_t>(errorCode);
 
-            if (errorCodeInt >= 0 && errorCodeInt < errorcodeToString.size())
+            if (errorCodeInt < errorcodeToString.size())
                 return errorcodeToString[errorCodeInt];
             else
                 return L"Unspecified";

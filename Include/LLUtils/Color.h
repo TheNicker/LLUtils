@@ -150,14 +150,12 @@ namespace LLUtils
         {
             static const Color DefaultParseFailureColor = Color(0xFF, 0xFF, 0xFF, 0xFF);
             constexpr uint8_t DefaultAlphaValue = 0xff;
-            using namespace std;;
+            using namespace std;
 
             auto HexPairToByte = [](const std::array<char, 3>& hexByte) -> uint8_t
             {
-              return static_cast<uint8_t>(std::strtoul(hexByte.data(), nullptr, 16));
+                return static_cast<uint8_t>(std::strtoul(hexByte.data(), nullptr, 16));
             };
-			
-            Color c = static_cast<uint32_t>(0xFF) << 24;
             std::array<std::uint8_t, 4>  colorBytes {};
             std::string trimmed = str;
             StringUtility::trim(trimmed, "\t\n\r ");
@@ -174,12 +172,12 @@ namespace LLUtils
                 hexIndex = 2;
 
             
-			if (hexIndex != -1 && view.length() > hexIndex)
+			if (hexIndex != -1 && view.length() > static_cast<size_t>(hexIndex))
 			{
                 constexpr uint8_t CharPerComponent = 2;
-                view = view.substr(hexIndex, view.length() - hexIndex);
+                view = view.substr(static_cast<size_t>(hexIndex), view.length() - static_cast<size_t>(hexIndex));
                 bool lastSingleDigitComponent = view.length() % 2;
-				uint8_t numComponents = view.length() / CharPerComponent + (lastSingleDigitComponent ? 1 : 0);
+				uint8_t numComponents =  static_cast<uint8_t>(view.length() / CharPerComponent + (lastSingleDigitComponent ? 1 : 0));
 				if (numComponents > 4)
 				{
                     numComponents = 4;
@@ -187,13 +185,8 @@ namespace LLUtils
 				}
 				
                 const bool isAlphaChannel = numComponents == 4;
-                const uint8_t numColorChannels = (std::min<uint8_t>)(3, numComponents);
-
 				size_t componentsToProcessInLoop = isAlphaChannel ? numComponents - 1: numComponents - (lastSingleDigitComponent == true ? 1 : 0);
-				
 				size_t comp = 0;
-
-                if (view.empty() == false)
 
 				//Assign two bytes componenets
 				for (; comp < componentsToProcessInLoop;comp++)
@@ -231,7 +224,7 @@ namespace LLUtils
                     return v2;
 
                 if ((3 * vH) < 2)
-                    return (v1 + (v2 - v1) * ((2.0f / 3) - vH) * 6);
+                    return (v1 + (v2 - v1) * ((2.0 / 3.0) - vH) * 6);
 
                 return v1;
             }
