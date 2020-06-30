@@ -87,7 +87,7 @@ namespace LLUtils
             if (millisec < 10)
                 *currentPos++ = '0';
 
-            size_t length = (3 - (currentPos - millisecPos));
+            size_t length = (3 - static_cast<size_t>(currentPos - millisecPos));
             size_t size = length * sizeof(native_char_type);
             
                 memcpy_s(currentPos

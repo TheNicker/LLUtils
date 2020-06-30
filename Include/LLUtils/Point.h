@@ -26,7 +26,7 @@ SOFTWARE.
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 // for casting from POINT and SIZE windows structs
-#include <windows.h> 
+#include <Windows.h> 
 #endif
 
 

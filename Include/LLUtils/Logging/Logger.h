@@ -69,9 +69,9 @@ namespace LLUtils
 			case TargetType::OutputDebug:
 				predefineLog = std::make_shared<LogDebug>();
 				break;
-			default:
+			case TargetType::None:
+			case TargetType::Count:
 				LL_EXCEPTION_UNEXPECTED_VALUE;
-
 			}
 
 			if (predefineLog != nullptr)

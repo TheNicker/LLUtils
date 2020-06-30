@@ -29,6 +29,7 @@ namespace LLUtils
 	{
 	public:
 		virtual void Log(std::wstring message) = 0;
+		virtual ~ILog(){}
 	};
 
 	using LogSharedPtr = std::shared_ptr<ILog>;

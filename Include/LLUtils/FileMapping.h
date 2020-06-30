@@ -64,7 +64,7 @@ namespace LLUtils
         {
             return mView;
         }
-        std::size_t GetSize() const
+        uintmax_t GetSize() const
         {
             return mSize;
         }
@@ -89,7 +89,7 @@ namespace LLUtils
 
     private: // member fields
         const std::wstring fFilePath;
-        std::size_t mSize = 0;
+        uintmax_t mSize = 0;
         HANDLE mHandleMMF = nullptr;
         HANDLE mHandleFile = nullptr;
         void *mView = nullptr;

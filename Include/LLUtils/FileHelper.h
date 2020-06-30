@@ -59,7 +59,7 @@ namespace LLUtils
 			uintmax_t fileSize = filesystem::file_size(filePath);
             LLUtils::Buffer buf(static_cast<size_t>(fileSize));
             ifstream t(filePath, std::ios::binary);
-            t.read((char*)buf.data(), fileSize);
+            t.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(fileSize));
             return buf;
         }
 
@@ -72,7 +72,7 @@ namespace LLUtils
                 filesystem::create_directory(parent);
 
             ofstream file(filePath, std::ios::binary);
-            file.write((char*)buffer, size);
+            file.write(reinterpret_cast<const char*>(buffer),static_cast<std::streamsize>(size));
         }
     };
 }
