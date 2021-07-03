@@ -64,13 +64,8 @@ namespace LLUtils
             using namespace std::filesystem;
             path p(fileName);
             if (p.empty() == false && p.is_absolute() == false)
-            {
-                p = current_path() / fileName;
-                if (exists(p) == false)
-                    p.clear();
-
-            }
-
+               p = current_path() / fileName;
+            
             return p.wstring();
         }
 
