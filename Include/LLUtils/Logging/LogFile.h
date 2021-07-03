@@ -46,6 +46,10 @@ namespace LLUtils
 			}
 		}
 
+		 const std::wstring& GetLogPath() const
+		 {
+			 return mLogPath;
+		 }
 
 	private:
 		std::wstring mLogPath;
