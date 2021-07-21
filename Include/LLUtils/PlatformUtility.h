@@ -154,6 +154,53 @@ namespace LLUtils
 			return stackTrace;
         }
 
+        struct OSVersion
+        {
+            uint32_t major;
+            uint32_t minor;
+            uint32_t build;
+        };
+        
+
+        static OSVersion GetOSVersion()
+        {
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+            
+            using Win32VersionInfo = OSVERSIONINFOEXW;
+            auto GetWin32OSVersion = []() -> Win32VersionInfo
+            {
+                HMODULE hMod = ::GetModuleHandleW(L"ntdll.dll");
+
+                using NTSTATUS = LONG;
+                constexpr NTSTATUS STATUS_SUCCESS = 0x00000000;
+                using RtlGetVersionPtr = NTSTATUS(WINAPI*)(Win32VersionInfo*);
+
+                Win32VersionInfo vi{};
+
+                if (hMod != nullptr)
+                {
+                    RtlGetVersionPtr fxPtr = reinterpret_cast<RtlGetVersionPtr>(::GetProcAddress(hMod, "RtlGetVersion"));
+                    if (fxPtr != nullptr)
+                    {
+                        vi.dwOSVersionInfoSize = sizeof(vi);
+                        if (STATUS_SUCCESS != fxPtr(&vi))
+                        {
+				            throw std::runtime_error("Could not get OS version info.");
+	                    }
+                    }
+                }
+                return vi;
+            };
+
+            const Win32VersionInfo win32Version = GetWin32OSVersion();
+            return { win32Version.dwMajorVersion , win32Version.dwMinorVersion, win32Version.dwBuildNumber };
+            
+            
+#else
+            throw std::runtime_error("GetOSVersion: Not implemented in the current platform.");
+#endif
+        }
+
         static native_string_type GetAppDataFolder()
         {
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
@@ -171,7 +218,7 @@ namespace LLUtils
 
             return native_string_type();
 #else
-            throw std::logic_error("GetAppDataFolder: Not supported in linux yet.");
+            throw std::logic_error("GetAppDataFolder: Not implemented in the current platform.");
             //TODO: Make the exception call below work here
             //LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented,);
 #endif
