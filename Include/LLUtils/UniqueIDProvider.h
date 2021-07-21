@@ -47,6 +47,12 @@ namespace LLUtils
 
         }
 
+        void Reset()
+        {
+            fNextId = fStartID;
+            fFreeIds.clear();
+        }
+
         underlying_type GetNextID() const
         {
             return fNextId;
