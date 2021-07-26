@@ -41,8 +41,10 @@ namespace LLUtils
 
             auto AddFileIfExtensionsMatches = [&](const path& filePath)
             {
-                //TODO : use c++17 string_view instead of erasing the dot
-                std::wstring extNoDot = filePath.extension().wstring().erase(0, 1);
+                std::wstring extNoDot = filePath.extension().wstring();
+                
+                if (extNoDot.empty() == false)
+                    extNoDot = extNoDot.substr(1);
 
                 if (extensionSet.find(caseSensitive == true ? extNoDot : StringUtility::ToUpper(extNoDot)) != extensionSet.end())
                     filesList.push_back(filePath.wstring());
