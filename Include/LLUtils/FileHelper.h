@@ -64,14 +64,14 @@ namespace LLUtils
         }
 
 
-        static void WriteAllBytes(const std::wstring& filePath, const std::size_t size, const std::byte* const buffer)
+        static void WriteAllBytes(const std::wstring& filePath, const std::size_t size, const std::byte* const buffer, bool append = false)
         {
             using namespace std;
             filesystem::path parent = filesystem::path(filePath).parent_path();
             if (filesystem::exists(parent) == false)
                 filesystem::create_directory(parent);
 
-            ofstream file(filePath, std::ios::binary);
+            ofstream file(filePath, std::ios::binary | (append ? std::ios_base::app : std::ios_base::out));
             file.write(reinterpret_cast<const char*>(buffer),static_cast<std::streamsize>(size));
         }
     };
