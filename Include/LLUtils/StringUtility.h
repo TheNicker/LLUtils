@@ -135,9 +135,29 @@ namespace LLUtils
 			return ConvertString< default_string_type>(str);
 		}
 
-
-	
-
+        /// <summary>
+        /// Copy string from source to destination
+        /// </summary>
+        /// <typeparam name="char_type"></typeparam>
+        /// <param name="dest">destination string to copy to</param>
+        /// <param name="max_size">maximum size of destination buffer</param>
+        /// <param name="source">source string to copy from</param>
+        template <typename char_type>
+        static errno_t StrCpy(char_type* dest, size_t max_size, const char_type* source)
+        {
+            if constexpr (std::is_same_v<char, char_type>)
+            {
+                return strcpy_s(dest, max_size, source);
+            }
+            else if constexpr (std::is_same_v<wchar_t, char_type>)
+            {
+                return wcscpy_s(dest, max_size, source);
+            }
+            else
+            {
+                #pragma error("unsupported char type");
+            }
+        }
 
 		
 	
