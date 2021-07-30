@@ -153,9 +153,9 @@ namespace LLUtils
             {
                 return wcscpy_s(dest, max_size, source);
             }
-            else
+            else 
             {
-                #pragma error("unsupported char type");
+                throw std::runtime_error("unsupported char type");
             }
         }
 
