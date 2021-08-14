@@ -21,6 +21,8 @@ SOFTWARE.
 */
 
 #pragma once
+#include "LogTarget.h"
+#include "../FileSystemHelper.h"
 namespace LLUtils
 {
 	class LogConsole final : public ILog
@@ -55,6 +57,11 @@ namespace LLUtils
 			{
 				File::WriteAllText(mLogPath, message, true);
 			}
+		}
+
+		const std::wstring& GetLogPath() const
+		{
+			return mLogPath;
 		}
 
 
