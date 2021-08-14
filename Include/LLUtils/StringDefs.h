@@ -30,7 +30,7 @@ namespace LLUtils
 {
 
 
-#if LLUTILS_CHARSET ==  LLUTILS_CHARSET_UNICODE
+#if LLUTILS_CHARSET == LLUTILS_CHARSET_UNICODE
     using native_char_type = wchar_t;
 #define LLUTILS_TEXT(T) L##T
 #else

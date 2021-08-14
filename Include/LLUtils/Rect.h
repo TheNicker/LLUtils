@@ -41,16 +41,16 @@ namespace LLUtils
         using Point_Type = Point<T>;
         Rect() = default;
 
-        Rect(Point_Type point1, Point_Type point2)
+        Rect(const Point_Type& point1, const Point_Type& point2)
         {
-            if (point1.x > point2.x)
-                std::swap(point1.x, point2.x);
-
-            if (point1.y > point2.y)
-                std::swap(point1.y, point2.y);
-
             p0 = point1;
             p1 = point2;
+
+            if (p0.x > p1.x)
+                std::swap(p0.x, p1.x);
+
+            if (p0.y > p1.y)
+                std::swap(p0.y, p1.y);
         }
 
         Rect Intersection(const Rect& rect)

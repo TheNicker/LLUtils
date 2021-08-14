@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019 Lior Lahav
+Copyright (c) 2021 Lior Lahav
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@ SOFTWARE.
 #pragma warning(disable:4244) // when calling std::transform with ::tolower;
 
 #include "Platform.h"
+#include "Warnings.h"
 #include <string>
 #include <cstring>
 #include <vector>
@@ -34,6 +35,7 @@ SOFTWARE.
 #include <locale>
 #include <cwchar>
 #include "StringDefs.h"
+
 
 namespace LLUtils
 {
@@ -183,8 +185,11 @@ namespace LLUtils
             using namespace std;
             string_type localStr = str;
 
-            std::transform(localStr.begin(), localStr.end(), localStr.begin(), ::tolower);
-
+LLUTILS_DISABLE_WARNING_PUSH
+LLUTILS_DISABLE_WARNING_CONVERT_INT_TO_CHAR
+//::tolower generates warnings since it accepts int instead of char or wchar_t
+std::transform(localStr.begin(), localStr.end(), localStr.begin(), ::tolower);
+LLUTILS_DISABLE_WARNING_POP
             return localStr;
         }
 

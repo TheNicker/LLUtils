@@ -36,8 +36,8 @@ namespace LLUtils
         //Note: Do not change the order of the members deceleration
         // if its inevitable keep 'fFreeIds' prior to 'fFreeIdsEnd'
         Container fFreeIds;
-        const typename Container::const_iterator fFreeIdsEnd;
-        const T fStartID;
+        typename Container::const_iterator fFreeIdsEnd;
+        T fStartID;
         T fNextId;
 
 

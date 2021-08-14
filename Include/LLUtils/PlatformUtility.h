@@ -166,14 +166,14 @@ namespace LLUtils
         {
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
             
-            using Win32VersionInfo = OSVERSIONINFOEXW;
+            using Win32VersionInfo = OSVERSIONINFOEX;
             auto GetWin32OSVersion = []() -> Win32VersionInfo
             {
                 HMODULE hMod = ::GetModuleHandleW(L"ntdll.dll");
 
                 using NTSTATUS = LONG;
                 constexpr NTSTATUS STATUS_SUCCESS = 0x00000000;
-                using RtlGetVersionPtr = NTSTATUS(WINAPI*)(Win32VersionInfo*);
+                using RtlGetVersionPtr = INT_PTR(FAR WINAPI*)(Win32VersionInfo*);
 
                 Win32VersionInfo vi{};
 

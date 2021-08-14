@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019 Lior Lahav
+Copyright (c) 2021 Lior Lahav
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -180,7 +180,7 @@ namespace LLUtils
 #if defined(UNICODE) || defined(_UNICODE)
     #define LLUTILS_CHARSET LLUTILS_CHARSET_UNICODE
 #else
-    #define LLUTILS_CHARSET LLUTILS_CHARSET_ANSI
+    #define LLUTILS_CHARSET LLUTILS_CHARSET_ASCI
 #endif
 
 }

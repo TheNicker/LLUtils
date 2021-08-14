@@ -139,10 +139,10 @@ namespace LLUtils
         Color Blend(const Color& source)
         {
             Color blended;
-            uint8_t invSourceAlpha = 0xFF - source.A;
-            blended.R = (source.A * source.R + invSourceAlpha * R) / 0xFF;
-            blended.G = (source.A * source.G + invSourceAlpha * G) / 0xFF;
-            blended.B = (source.A * source.B + invSourceAlpha * B) / 0xFF;
+            uint8_t invSourceAlpha = static_cast<uint8_t>( static_cast<uint8_t>(0xFF) - source.A);
+            blended.R = static_cast<uint8_t>((source.A * source.R + invSourceAlpha * R) / 0xFF);
+            blended.G = static_cast<uint8_t>((source.A * source.G + invSourceAlpha * G) / 0xFF);
+            blended.B = static_cast<uint8_t>((source.A * source.B + invSourceAlpha * B) / 0xFF);
             blended.A = (std::max)(A, source.A);
             return blended;
         }
@@ -185,7 +185,7 @@ namespace LLUtils
 				}
 				
                 const bool isAlphaChannel = numComponents == 4;
-				size_t componentsToProcessInLoop = isAlphaChannel ? numComponents - 1: numComponents - (lastSingleDigitComponent == true ? 1 : 0);
+				size_t componentsToProcessInLoop = isAlphaChannel ? numComponents - 1u: numComponents - (lastSingleDigitComponent == true ? 1u : 0u);
 				size_t comp = 0;
 
 				//Assign two bytes componenets
