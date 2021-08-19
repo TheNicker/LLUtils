@@ -136,6 +136,18 @@ namespace LLUtils
             using BASE_POINT_TYPE = Point<BASE_TYPE>;
             return  Rect<BASE_TYPE>(static_cast<BASE_POINT_TYPE>(p0), static_cast<BASE_POINT_TYPE>(p1));
         }
+
+        Point_Type& LeftTop()
+        {
+            return p0;
+        }
+
+        Point_Type& RightBottom()
+        {
+            return p1;
+        }
+
+
     private:
 
         Point_Type p0;

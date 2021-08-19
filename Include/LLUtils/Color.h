@@ -26,27 +26,33 @@ SOFTWARE.
 #include <cmath>
 #include <array>
 #include "StringUtility.h"
+#include <bit>
+#include <cmath>
 
 namespace LLUtils
 {
     struct Color
     {
-        uint32_t colorValue;
-        uint8_t& R = *(reinterpret_cast<uint8_t*>(&colorValue) + 0);
-        uint8_t& G = *(reinterpret_cast<uint8_t*>(&colorValue) + 1);
-    	uint8_t& B = *(reinterpret_cast<uint8_t*>(&colorValue) + 2);
-        uint8_t& A = *(reinterpret_cast<uint8_t*>(&colorValue) + 3);
+        using ColorValue = uint32_t;
+        using Channel = uint8_t;
+        ColorValue colorValue;
+        static constexpr int reverse = std::endian::native == std::endian::little ? 3 : 0;
+        
+        Channel& R = *(reinterpret_cast<Channel*>(&colorValue) + std::abs(reverse - 0));
+        Channel& G = *(reinterpret_cast<Channel*>(&colorValue) + std::abs(reverse - 1));
+        Channel& B = *(reinterpret_cast<Channel*>(&colorValue) + std::abs(reverse - 2));
+        Channel& A = *(reinterpret_cast<Channel*>(&colorValue) + std::abs(reverse - 3));
+
 
         Color(const Color& color)
         {
             colorValue = color.colorValue;
         }
 
-        Color(Color&& color)
+        Color(Color&& color) noexcept
         {
             colorValue = color.colorValue;
         }
-        
 
         Color& operator=(const Color& color)
         {
@@ -78,10 +84,10 @@ namespace LLUtils
 		template <typename ParamType, typename std::enable_if_t<std::is_floating_point_v<ParamType>, int> = 0>
 		Color(ParamType r, ParamType g, ParamType b, ParamType a = 1.0) 
 		{
-            R = static_cast<uint8_t>(std::round(r * 255.0));
-            G = static_cast<uint8_t>(std::round(g * 255.0));
-            B = static_cast<uint8_t>(std::round(b * 255.0));
-            A = static_cast<uint8_t>(std::round(a * 255.0));
+            R = static_cast<Channel>(std::round(r * 255.0));
+            G = static_cast<Channel>(std::round(g * 255.0));
+            B = static_cast<Channel>(std::round(b * 255.0));
+            A = static_cast<Channel>(std::round(a * 255.0));
 		}
 
 
@@ -89,13 +95,13 @@ namespace LLUtils
 		template <typename ParamType, typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
         Color(ParamType r, ParamType g, ParamType b, ParamType a = 255)
         {
-            R = static_cast<uint8_t>(r);
-            G = static_cast<uint8_t>(g);
-            B = static_cast<uint8_t>(b);
-            A = static_cast<uint8_t>(a);
+            R = static_cast<Channel>(r);
+            G = static_cast<Channel>(g);
+            B = static_cast<Channel>(b);
+            A = static_cast<Channel>(a);
         }
      
-        Color(uint32_t color)
+        Color(ColorValue color)
         {
             colorValue = color;
         }
@@ -112,13 +118,13 @@ namespace LLUtils
 
         static Color FromHSL(uint16_t hue, double sat, double lum)
         {
-            uint8_t r = 0;
-            uint8_t g = 0;
-            uint8_t b = 0;
+            Channel r = 0;
+            Channel g = 0;
+            Channel b = 0;
 
             if (sat == 0)
             {
-                r = g = b = static_cast<uint8_t>(lum * 255);
+                r = g = b = static_cast<Channel>(lum * 255);
             }
             else
             {
@@ -128,9 +134,9 @@ namespace LLUtils
                 v2 = (lum < 0.5) ? (lum * (1.0 + sat)) : ((lum + sat) - (lum * sat));
                 v1 = 2.0 * lum - v2;
 
-                r = static_cast<uint8_t>(255.0 * HueToRGB(v1, v2, hueNormalized + (1.0 / 3.0)));
-                g = static_cast<uint8_t>(255.0 * HueToRGB(v1, v2, hueNormalized));
-                b = static_cast<uint8_t>(255.0 * HueToRGB(v1, v2, hueNormalized - (1.0 / 3.0)));
+                r = static_cast<Channel>(255.0 * HueToRGB(v1, v2, hueNormalized + (1.0 / 3.0)));
+                g = static_cast<Channel>(255.0 * HueToRGB(v1, v2, hueNormalized));
+                b = static_cast<Channel>(255.0 * HueToRGB(v1, v2, hueNormalized - (1.0 / 3.0)));
             }
 
             return { r,g,b };
@@ -138,25 +144,50 @@ namespace LLUtils
 
         Color Blend(const Color& source)
         {
-            Color blended;
-            uint8_t invSourceAlpha = static_cast<uint8_t>( static_cast<uint8_t>(0xFF) - source.A);
-            blended.R = static_cast<uint8_t>((source.A * source.R + invSourceAlpha * R) / 0xFF);
-            blended.G = static_cast<uint8_t>((source.A * source.G + invSourceAlpha * G) / 0xFF);
-            blended.B = static_cast<uint8_t>((source.A * source.B + invSourceAlpha * B) / 0xFF);
-            blended.A = (std::max)(A, source.A);
-            return blended;
+            std::array<double, 4> normalizedDest = GetNormalizedColorValue<double>();
+            std::array<double, 4> normalizedSource = source.GetNormalizedColorValue<double>();
+
+            double invSourceAlpha = 1.0 - normalizedSource[3];
+
+            double a = normalizedSource[3] + invSourceAlpha * normalizedDest[3];
+            double r = normalizedSource[0] * normalizedSource[3] + invSourceAlpha * normalizedDest[0] * normalizedDest[3];
+            double g = normalizedSource[1] * normalizedSource[3] + invSourceAlpha * normalizedDest[1] * normalizedDest[3];
+            double b = normalizedSource[2] * normalizedSource[3] + invSourceAlpha * normalizedDest[2] * normalizedDest[3];
+
+            if (a != 0.0)
+            {
+                r /= a;
+                g /= a;
+                b /= a;
+            };
+
+            return { r,g,b,a };
+
+            /*blended.A = static_cast<Channel>((source.A  + A * invSourceAlpha / 0xFF) );
+            blended.R = static_cast<Channel>(((( (int)source.A * source.R) + (A * R) * invSourceAlpha)) / 0xFF);
+            blended.G = static_cast<Channel>(((( (int)source.A * source.G) + (A * G) * invSourceAlpha)) / 0xFF);
+            blended.B = static_cast<Channel>(((( (int)source.A * source.B) + (A * B) * invSourceAlpha)) / 0xFF);
+
+            if (blended.A != 0)
+            {
+                blended.R /= blended.A;
+                blended.G /= blended.A;
+                blended.B /= blended.A;
+            }
+            
+            return blended;*/
         }
         static Color FromString(const std::string& str)
         {
             static const Color DefaultParseFailureColor = Color(0xFF, 0xFF, 0xFF, 0xFF);
-            constexpr uint8_t DefaultAlphaValue = 0xff;
+            constexpr Channel DefaultAlphaValue = 0xff;
             using namespace std;
 
-            auto HexPairToByte = [](const std::array<char, 3>& hexByte) -> uint8_t
+            auto HexPairToByte = [](const std::array<char, 3>& hexByte) -> Channel
             {
-                return static_cast<uint8_t>(std::strtoul(hexByte.data(), nullptr, 16));
+                return static_cast<Channel>(std::strtoul(hexByte.data(), nullptr, 16));
             };
-            std::array<std::uint8_t, 4>  colorBytes {};
+            std::array<Channel, 4>  colorBytes {};
             std::string trimmed = str;
             StringUtility::trim(trimmed, "\t\n\r ");
 
@@ -174,10 +205,10 @@ namespace LLUtils
             
 			if (hexIndex != -1 && view.length() > static_cast<size_t>(hexIndex))
 			{
-                constexpr uint8_t CharPerComponent = 2;
+                constexpr Channel CharPerComponent = 2;
                 view = view.substr(static_cast<size_t>(hexIndex), view.length() - static_cast<size_t>(hexIndex));
                 bool lastSingleDigitComponent = view.length() % 2;
-				uint8_t numComponents =  static_cast<uint8_t>(view.length() / CharPerComponent + (lastSingleDigitComponent ? 1 : 0));
+                Channel numComponents =  static_cast<Channel>(view.length() / CharPerComponent + (lastSingleDigitComponent ? 1 : 0));
 				if (numComponents > 4)
 				{
                     numComponents = 4;
@@ -203,7 +234,16 @@ namespace LLUtils
                     colorBytes.at(3) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) ,0 });
 
 				
-                return Color(*reinterpret_cast<uint32_t*>(colorBytes.data()));
+
+                if constexpr (std::endian::native == std::endian::little)
+                {
+                    return Color(_byteswap_ulong(*reinterpret_cast<ColorValue*>((colorBytes.data()))));
+                }
+                else
+                {
+                    return Color(*reinterpret_cast<ColorValue*>(colorBytes.data()));
+                }
+                
 			}
 
             return DefaultParseFailureColor;

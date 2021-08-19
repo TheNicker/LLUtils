@@ -31,18 +31,19 @@ namespace LLUtils
     class File
     {
     public:
-        static std::string ReadAllText(std::wstring filePath)
+        template <typename string_type = std::wstring, typename char_type = string_type::value_type>
+        static string_type ReadAllText(std::wstring filePath)
         {
             using namespace std;
-            ifstream t(filePath);
+            basic_ifstream<char_type, char_traits<char_type>> t(filePath);
             if (t.is_open())
             {
-                stringstream buffer;
+                basic_stringstream<char_type>  buffer;
                 buffer << t.rdbuf();
                 return buffer.str();
             }
             else
-                return std::string();
+                return string_type{};
         }
 
 		template <class string_type, typename char_type = typename string_type::value_type >
