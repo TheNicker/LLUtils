@@ -31,7 +31,7 @@ namespace LLUtils
     class File
     {
     public:
-        template <typename string_type = std::wstring, typename char_type = string_type::value_type>
+        template <typename string_type = std::wstring, typename char_type = typename string_type::value_type>
         static string_type ReadAllText(std::wstring filePath)
         {
             using namespace std;
