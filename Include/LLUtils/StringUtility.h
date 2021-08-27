@@ -65,12 +65,14 @@ namespace LLUtils
             return ltrim(rtrim(s, t), t);
         }
 	
-        template<typename chartype, typename string_type = std::basic_string<chartype>>
-        static ListString<string_type> split(const string_type &s, chartype delim)
+        template<typename string_type, typename char_type>
+        static ListString<string_type> split(const string_type &s, char_type delim)
         {
+            using value_type = typename string_type::value_type;
+            static_assert(std::is_same_v<value_type, char_type>, "Char type mismatch, please refer to the calling site.");
             using namespace std;
             ListString<string_type> elems;
-            using value_type = typename string_type::value_type;
+            
             basic_stringstream<value_type> ss;
             ss.str(s);
             string_type item;
@@ -187,6 +189,7 @@ namespace LLUtils
 
 LLUTILS_DISABLE_WARNING_PUSH
 LLUTILS_DISABLE_WARNING_CONVERT_INT_TO_CHAR
+LLUTILS_DISABLE_WARNING_CONVERT_INT_TO_WCHAR_T
 //::tolower generates warnings since it accepts int instead of char or wchar_t
 std::transform(localStr.begin(), localStr.end(), localStr.begin(), ::tolower);
 LLUTILS_DISABLE_WARNING_POP
