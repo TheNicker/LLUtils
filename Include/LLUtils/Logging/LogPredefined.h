@@ -22,7 +22,9 @@ SOFTWARE.
 
 #pragma once
 #include "LogTarget.h"
+#include <LLUtils/FileHelper.h>
 #include "../FileSystemHelper.h"
+#include <iostream>
 namespace LLUtils
 {
 	class LogConsole final : public ILog
