@@ -53,7 +53,7 @@ namespace LLUtils
                 std::swap(p0.y, p1.y);
         }
 
-        Rect Intersection(const Rect& rect)
+        Rect Intersection(const Rect& rect) const
         {
             T x0 = (std::max)(p0.x, rect.p0.x);
             T x1 = (std::min)(p1.x, rect.p1.x);
