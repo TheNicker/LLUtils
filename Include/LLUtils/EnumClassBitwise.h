@@ -51,6 +51,16 @@ SOFTWARE.
         return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) >> rhs);\
     }\
 	\
+    PREFIX constexpr inline Enum operator^ (Enum lhs, Enum rhs)\
+    {\
+        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) ^ static_cast<std::underlying_type_t<Enum>>(rhs));\
+    }\
+	\
+    PREFIX constexpr inline Enum& operator^= (Enum& lhs, Enum rhs)\
+    {\
+        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) ^ static_cast<std::underlying_type_t<Enum>>(rhs));\
+        return lhs;\
+    }\
     PREFIX constexpr inline Enum operator&= (Enum& lhs, Enum rhs)\
     {\
         lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));\
