@@ -49,32 +49,40 @@ namespace LLUtils
 			, NotFound
             , __Count__
         };
+        enum class Mode
+        {
+             Exception
+            ,Error
+        };
 
         struct EventArgs
         {
             ErrorCode errorCode;
             std::wstring description;
             std::wstring systemErrorMessage;
-            std::wstring callstack;
+            PlatformUtility::StackTrace stackTrace;
             std::wstring functionName;
+            Mode exceptionmode;
         };
 
     
         using OnExceptionEventType = Event<void(EventArgs)>;
         static inline OnExceptionEventType OnException;
-        Exception(ErrorCode errorCode, std::string function, std::string description, bool systemError)
+        static void SetThrowErrorsInDebug(bool shouldThrow)
+        {
+            sThrowErrorsInDebug = shouldThrow;
+        }
+
+        static std::wstring FormatStackTrace(const PlatformUtility::StackTrace& stackTrace, uint16_t maxDepth = std::numeric_limits<uint16_t>::max())
         {
             using namespace std;
-            PlatformUtility::StackTrace stackTrace = PlatformUtility::GetCallStack(2);
-
-            std::wstring systemErrorMessage;
-            if (systemError == true)
-                systemErrorMessage = PlatformUtility::GetLastErrorAsString() ;
-            
             wstringstream ss;
-
+            uint16_t depth = 0;
 			for (const auto& f : stackTrace)
 			{
+                if (depth++ > maxDepth)
+                    break;
+
 				ss << filesystem::path(f.moduleName).filename().wstring() << L"!" << f.name;
 				if (f.sourceFileName.empty() == false)
 					ss << L" at " << f.sourceFileName << dec << L" line: " << f.line << L" column: " << f.displacement;
@@ -82,15 +90,24 @@ namespace LLUtils
 				ss << L" at address 0x" << hex << f.address << endl;
 			}
 			
+            return ss.str();
 
-            std::wstring callStack = ss.str();
+        }
+
+        Exception(ErrorCode errorCode, std::string function, std::string description, bool systemError, Mode exceptionMode)
+        {
+            std::wstring systemErrorMessage;
+            if (systemError == true)
+                systemErrorMessage = PlatformUtility::GetLastErrorAsString() ;
+            
             EventArgs args =
             {
                   errorCode
                 , LLUtils::StringUtility::ToWString(description)
                 , systemErrorMessage
-                , callStack
+                , PlatformUtility::GetCallStack(2)
                 , LLUtils::StringUtility::ToWString(function)
+                , exceptionMode
             };
             
             OnException.Raise(args);
@@ -118,14 +135,29 @@ namespace LLUtils
             else
                 return L"Unspecified";
         }
+        static inline bool sThrowErrorsInDebug = true;
     };
 
 
-#define LL_EXCEPTION(ERROR_CODE,DESCRIPTION) ( throw LLUtils::Exception(ERROR_CODE, __FUNCTION__, DESCRIPTION, false) )
+#define LL_EXCEPTION(ERROR_CODE,DESCRIPTION) ( throw LLUtils::Exception(ERROR_CODE, __FUNCTION__, DESCRIPTION, false, LLUtils::Exception::Mode::Exception) )
 
-//predefine common exceptions
-#define LL_EXCEPTION_SYSTEM_ERROR(DESCRIPTION) ( throw LLUtils::Exception(LLUtils::Exception::ErrorCode::SystemError, __FUNCTION__, DESCRIPTION, true) )
-#define LL_EXCEPTION_UNEXPECTED_VALUE ( throw LLUtils::Exception(LLUtils::Exception::ErrorCode::RuntimeError, __FUNCTION__, "unexpected or coruppted value.", false) )
-#define LL_EXCEPTION_NOT_IMPLEMENT(WHAT) ( throw LLUtils::Exception(LLUtils::Exception::ErrorCode::NotImplemented, __FUNCTION__, WHAT, false) )
-    
+    //predefine common exceptions
+#define LL_EXCEPTION_SYSTEM_ERROR(DESCRIPTION) ( throw LLUtils::Exception(LLUtils::Exception::ErrorCode::SystemError, __FUNCTION__, DESCRIPTION, true, LLUtils::Exception::Mode::Exception) )
+#define LL_EXCEPTION_UNEXPECTED_VALUE ( throw LLUtils::Exception(LLUtils::Exception::ErrorCode::RuntimeError, __FUNCTION__, "unexpected or coruppted value.", false, LLUtils::Exception::Mode::Exception) )
+#define LL_EXCEPTION_NOT_IMPLEMENT(WHAT) ( throw LLUtils::Exception(LLUtils::Exception::ErrorCode::NotImplemented, __FUNCTION__, WHAT, false, LLUtils::Exception::Mode::Exception) )
+
+// Create an exception object without throwing.
+#define LL_EXCEPTION_DONT_THROW(ERROR_CODE,DESCRIPTION) ( LLUtils::Exception(ERROR_CODE, __FUNCTION__, DESCRIPTION, false, LLUtils::Exception::Mode::Error) )
+
+#ifdef _DEBUG
+#define LL_ERROR(ERROR_CODE,DESCRIPTION) \
+{\
+if (LLUtils::Exception::sThrowErrorsInDebug) \
+    LL_EXCEPTION(ERROR_CODE,DESCRIPTION);\
+ else LL_EXCEPTION_DONT_THROW(ERROR_CODE, DESCRIPTION);\
+}
+#else
+    #define LL_ERROR LL_EXCEPTION_DONT_THROW
+#endif
+
 }
