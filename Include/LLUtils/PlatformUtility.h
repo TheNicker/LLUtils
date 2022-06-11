@@ -32,6 +32,7 @@ SOFTWARE.
 #include "StringDefs.h"
 #include "Utility.h"
 #include "StringUtility.h"
+#include "Buffer.h"
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 
@@ -225,9 +226,16 @@ namespace LLUtils
         }
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
-        static HANDLE CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, const std::byte* buffer)
+        static LLUtils::Buffer CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, uint32_t rowPitch, const std::byte* buffer)
         {
-            BITMAPINFOHEADER bi{};
+            // Align target dib scanline to 32 bit
+            const DWORD dwBytesPerLine = LLUtils::Utility::Align(static_cast<DWORD>(bpp * width), static_cast<DWORD>((sizeof(DWORD) * CHAR_BIT))) / CHAR_BIT;
+            const DWORD paletteSize = 0; // not supproted.
+            const DWORD imageSize = static_cast<size_t>(dwBytesPerLine * height);
+            const DWORD dibBufferSize = sizeof(BITMAPINFOHEADER) + paletteSize + imageSize;
+            LLUtils::Buffer dibBuffer(dibBufferSize);
+
+            BITMAPINFOHEADER& bi = *reinterpret_cast<BITMAPINFOHEADER*>(dibBuffer.data());
 
             bi.biSize = sizeof(BITMAPINFOHEADER);
             bi.biWidth = static_cast<LONG>(width);
@@ -236,31 +244,29 @@ namespace LLUtils
             bi.biBitCount = bpp;          // from parameter
             bi.biCompression = BI_RGB;
 
-            DWORD dwBytesPerLine = LLUtils::Utility::Align(static_cast<DWORD>(bpp * width), static_cast<DWORD>((sizeof(DWORD) * 8)) / 8);
-            DWORD paletteSize = 0; // not supproted.
-            DWORD dwLen = bi.biSize + paletteSize + (dwBytesPerLine * height);
+            size_t targetOffset = sizeof(BITMAPINFOHEADER);
 
-
-            HANDLE hDIB = GlobalAlloc(GHND, dwLen);
-
-            if (hDIB)
+            // if source row pitch is identical to destination row pitch, copy in one pass
+            if (dwBytesPerLine == rowPitch)
             {
-                // lock memory and get pointer to it
-                void *dib = GlobalLock(hDIB);
-
-                *reinterpret_cast<BITMAPINFOHEADER*>(dib) = bi;
-
-                void* pixelData = reinterpret_cast<BITMAPINFOHEADER*>(dib) + 1;
-
-                size_t size = static_cast<size_t>(bi.biWidth * bi.biHeight * (bi.biBitCount / 8));
-
-                memcpy(pixelData, buffer, size);
-                GlobalUnlock(hDIB);
+                dibBuffer.Write(buffer, targetOffset, imageSize);
             }
+            else
+            {
+                const size_t bytesTowritePerLIne = std::min<size_t>(rowPitch, dwBytesPerLine);
+                size_t sourceOffset = 0;
 
-            return hDIB;
+                for (uint32_t y = 0; y < height; y++)
+                {
+                    dibBuffer.Write(reinterpret_cast<const std::byte*>(reinterpret_cast<const uint8_t*>(buffer) + sourceOffset)
+                        , targetOffset, bytesTowritePerLIne);
+
+                    targetOffset += dwBytesPerLine;
+                    sourceOffset += rowPitch;
+                }
+            }
+            return dibBuffer;
         }
-
 
         static default_string_type GetModulePath(HMODULE hModule)
         {
