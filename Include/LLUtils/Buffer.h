@@ -68,7 +68,7 @@ namespace LLUtils
         #if LLUTILS_COMPILER_MIN_VERSION(LLUTILS_COMPILER_MSVC, 1700)
             _aligned_free(buffer);
         #else
-            std::free(buffer);
+            std::free(buffer);           
         #endif
         }
     };
@@ -86,17 +86,6 @@ namespace LLUtils
     {
     public:
         using Allocator = Alloc;
-        BufferBase(const BufferBase& rhs)
-        {
-            *this = rhs.Clone();
-        }
-        
-        BufferBase& operator=(const BufferBase& rhs)
-        {
-            *this = rhs.Clone();
-            return *this;
-        }
-        
 
         BufferBase() {}
         BufferBase(size_t size)
@@ -104,12 +93,38 @@ namespace LLUtils
             Allocate(size);
         }
 
-        void operator=(BufferBase&& rhs) noexcept
+        BufferBase(const std::byte* data, size_t size)
+        {
+            if (size > 0)
+            {
+                Allocate(size);
+                Write(data, 0, size);
+            }
+        }
+
+
+        BufferBase(const BufferBase& rhs, size_t size) : BufferBase(rhs.data(), size)
+        {
+            
+        }
+
+        BufferBase(const BufferBase& rhs)
+        {
+            *this = rhs.Clone();
+        }
+        
+        BufferBase(BufferBase&& rhs) noexcept
         {
             Swap(std::move(rhs));
         }
 
-        BufferBase(BufferBase&& rhs) noexcept
+        BufferBase& operator=(const BufferBase& rhs)
+        {
+            *this = rhs.Clone();
+            return *this;
+        }
+
+        void operator=(BufferBase&& rhs) noexcept
         {
             Swap(std::move(rhs));
         }
@@ -144,6 +159,11 @@ namespace LLUtils
 
 		[[deprecated("deprecated, use Buffer::data() instead")]]
         std::byte* GetBuffer()
+        {
+            return fData;
+        }
+
+        std::byte*& dataRef()
         {
             return fData;
         }
