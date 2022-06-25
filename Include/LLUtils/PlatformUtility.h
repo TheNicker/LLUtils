@@ -226,25 +226,38 @@ namespace LLUtils
         }
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+
+        template <size_t divVersion = 1>
+        static LLUtils::Buffer CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, uint32_t rowPitch, const std::byte* buffer)
+        {
+            if constexpr (divVersion == 5)
+                return CreateDIB<BITMAPV5HEADER>(width, height, bpp, rowPitch, buffer);
+            else 
+                return CreateDIB<BITMAPINFOHEADER>(width, height, bpp, rowPitch, buffer);
+        }
+
+        template <typename DibHeaderType>
         static LLUtils::Buffer CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, uint32_t rowPitch, const std::byte* buffer)
         {
             // Align target dib scanline to 32 bit
             const DWORD dwBytesPerLine = LLUtils::Utility::Align(static_cast<DWORD>(bpp * width), static_cast<DWORD>((sizeof(DWORD) * CHAR_BIT))) / CHAR_BIT;
             const DWORD paletteSize = 0; // not supproted.
             const DWORD imageSize = static_cast<size_t>(dwBytesPerLine * height);
-            const DWORD dibBufferSize = sizeof(BITMAPINFOHEADER) + paletteSize + imageSize;
+            const DWORD dibBufferSize = sizeof(DibHeaderType) + paletteSize + imageSize;
             LLUtils::Buffer dibBuffer(dibBufferSize);
+            
+            DibHeaderType& bi = *reinterpret_cast<DibHeaderType*>(dibBuffer.data()); 
+            bi = {};
 
-            BITMAPINFOHEADER& bi = *reinterpret_cast<BITMAPINFOHEADER*>(dibBuffer.data());
+            BITMAPINFOHEADER& v1 = reinterpret_cast<BITMAPINFOHEADER&>(bi);
+            v1.biSize = sizeof(DibHeaderType);
+            v1.biWidth = static_cast<LONG>(width);
+            v1.biHeight = static_cast<LONG>(height);
+            v1.biPlanes = 1;              // must be 1
+            v1.biBitCount = bpp;          // from parameter
+            v1.biCompression = BI_RGB;
 
-            bi.biSize = sizeof(BITMAPINFOHEADER);
-            bi.biWidth = static_cast<LONG>(width);
-            bi.biHeight = static_cast<LONG>(height);
-            bi.biPlanes = 1;              // must be 1
-            bi.biBitCount = bpp;          // from parameter
-            bi.biCompression = BI_RGB;
-
-            size_t targetOffset = sizeof(BITMAPINFOHEADER);
+            size_t targetOffset = sizeof(DibHeaderType);
 
             // if source row pitch is identical to destination row pitch, copy in one pass
             if (dwBytesPerLine == rowPitch)
