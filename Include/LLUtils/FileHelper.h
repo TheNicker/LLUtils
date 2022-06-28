@@ -25,6 +25,7 @@ SOFTWARE.
 #include <sstream>
 #include <filesystem>
 #include "Buffer.h"
+#include "FileSystemHelper.h"
 
 namespace LLUtils
 {
@@ -68,7 +69,9 @@ namespace LLUtils
         static void WriteAllBytes(const std::wstring& filePath, const std::size_t size, const std::byte* const buffer, bool append = false)
         {
             using namespace std;
-            filesystem::path parent = filesystem::path(filePath).parent_path();
+            
+            filesystem::path path = FileSystemHelper::ResolveFullPath(filePath);
+            filesystem::path parent = path.parent_path();
             if (filesystem::exists(parent) == false)
                 filesystem::create_directory(parent);
 
