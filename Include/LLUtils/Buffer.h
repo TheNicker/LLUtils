@@ -21,10 +21,10 @@ SOFTWARE.
 */
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <cstring>
-#include <cstddef>
 #include <LLUtils/Platform.h>
 
 #if __has_include(<LLUtilsBufferCustomAllocator.h>)

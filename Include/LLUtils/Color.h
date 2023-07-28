@@ -212,49 +212,72 @@ namespace LLUtils
             trimmed = StringUtility::ToLower(trimmed);
             std::string_view view = std::string_view(trimmed.c_str(), trimmed.length());
 
-			if (view.length() > 0 && view.at(0) == '#')
+            if (view.length() > 0 && view.at(0) == '#')
             {
                 hexIndex = 1;
             }
-            else if (view.length() > 1 && view.substr(0,2) == "0x")
+            else if (view.length() > 1 && view.substr(0, 2) == "0x")
                 hexIndex = 2;
 
-            
-			if (hexIndex != -1 && view.length() > static_cast<size_t>(hexIndex))
-			{
+
+            if (hexIndex != -1 && view.length() > static_cast<size_t>(hexIndex))
+            {
                 constexpr size_t CharPerComponent = 2;
                 view = view.substr(static_cast<size_t>(hexIndex), view.length() - static_cast<size_t>(hexIndex));
                 bool lastSingleDigitComponent = view.length() % 2;
-                size_t numComponents =  view.length() / CharPerComponent + (lastSingleDigitComponent ? 1 : 0);
-				if (numComponents > 4)
-				{
+                size_t numComponents = view.length() / CharPerComponent + (lastSingleDigitComponent ? 1 : 0);
+                if (numComponents > 4)
+                {
                     numComponents = 4;
                     lastSingleDigitComponent = false;
-				}
-				
-                const bool isAlphaChannel = numComponents == 4;
-				size_t componentsToProcessInLoop = isAlphaChannel ? numComponents - 1u: numComponents - (lastSingleDigitComponent == true ? 1u : 0u);
-				size_t comp = 0;
+                }
 
-				//Assign two bytes componenets
-				for (; comp < componentsToProcessInLoop;comp++)
+                const bool isAlphaChannel = numComponents == 4;
+                size_t componentsToProcessInLoop = isAlphaChannel ? numComponents - 1u : numComponents - (lastSingleDigitComponent == true ? 1u : 0u);
+                size_t comp = 0;
+
+                //Assign two bytes componenets
+                for (; comp < componentsToProcessInLoop; comp++)
                     colorBytes.at(comp) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) ,0 });
 
                 //Assign last single component, alpha or color.
                 if (lastSingleDigitComponent == true)
-                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({'0', view.at(comp * 2) ,0 });
+                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({ '0', view.at(comp * 2) ,0 });
 
-				//Assign default alpha if no alpha provided
-				if (isAlphaChannel == false)
+                //Assign default alpha if no alpha provided
+                if (isAlphaChannel == false)
                     colorBytes.at(3) = DefaultAlphaValue;
                 else if (lastSingleDigitComponent == false) // if two components alpha.
                     colorBytes.at(3) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) ,0 });
 
-				
-                return { colorBytes };
 
-                
-			}
+                return { colorBytes };
+            }
+
+            //If couldn't parse color in the form of 0xXXXXXX or #XXXXXX, try r,g,b,[a]
+            auto splitValues = StringUtility::split(str, ',');
+            bool error = false;
+
+            for (size_t i = 0; i < std::min(splitValues.size(), colorBytes.size()) ; i++)
+            {
+                try
+                {
+                    colorBytes.at(i) = static_cast<color_channel_type>(stoi(splitValues.at(i)));
+                }
+                catch (...)
+                {
+                    error = true;
+                    break;
+                }
+            }
+
+            if (!error)
+            {
+                if (splitValues.size() < 4) // no alpha channel supplied, set alpha channel to 255
+                    colorBytes.at(3) = 255;
+
+                return { colorBytes };
+            }
 
             return DefaultParseFailureColor;
         }
