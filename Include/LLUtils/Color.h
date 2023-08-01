@@ -48,17 +48,17 @@ namespace LLUtils
 
         ColorData channels;
         
-        color_channel_type& R() { return channels[0];}
-        color_channel_type& G() { return channels[1];}
-        color_channel_type& B() { return channels[2];}
-        color_channel_type& A() { return channels[3];}
+        constexpr color_channel_type& R() { return channels[0];}
+        constexpr color_channel_type& G() { return channels[1];}
+        constexpr color_channel_type& B() { return channels[2];}
+        constexpr color_channel_type& A() { return channels[3];}
 
-        const color_channel_type& R() const { return channels[0]; }
-        const color_channel_type& G() const { return channels[1]; }
-        const color_channel_type& B() const { return channels[2]; }
-        const color_channel_type& A() const { return channels[3]; }
+        constexpr const color_channel_type& R() const { return channels[0]; }
+        constexpr const color_channel_type& G() const { return channels[1]; }
+        constexpr const color_channel_type& B() const { return channels[2]; }
+        constexpr const color_channel_type& A() const { return channels[3]; }
 
-        Color() = default;
+        constexpr Color() = default;
        
         bool operator ==(const Color& rhs) const 
         {
@@ -71,7 +71,7 @@ namespace LLUtils
         }
         
 
-        Color(ColorData _channels)
+        constexpr Color(ColorData _channels)
         {
             channels = _channels;
         }
@@ -99,7 +99,7 @@ namespace LLUtils
         }
 
         template <class channel_type>
-        const GenericColorData<channel_type> GetNormalizedColorValue() const
+        constexpr const GenericColorData<channel_type> GetNormalizedColorValue() const
         {
             static_assert(std::is_floating_point<channel_type>(), "Only floating point support normalization");
 
@@ -114,7 +114,7 @@ namespace LLUtils
 		
 		//Floating point constructor
 		template <typename ParamType, typename std::enable_if_t<std::is_floating_point_v<ParamType>, int> = 0>
-		Color(ParamType r, ParamType g, ParamType b, ParamType a = 1.0) 
+        constexpr Color(ParamType r, ParamType g, ParamType b, ParamType a = 1.0)
 		{
             R() = static_cast<color_channel_type>(std::round(r * static_cast<ParamType>(max_channel_value)));
             G() = static_cast<color_channel_type>(std::round(g * static_cast<ParamType>(max_channel_value)));
@@ -125,7 +125,7 @@ namespace LLUtils
 
 		//Intergal constructor
 		template <typename ParamType, typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
-        Color(ParamType r, ParamType g, ParamType b, ParamType a = max_channel_value)
+        constexpr Color(ParamType r, ParamType g, ParamType b, ParamType a = max_channel_value)
         {
             R() = static_cast<color_channel_type>(r);
             G() = static_cast<color_channel_type>(g);
