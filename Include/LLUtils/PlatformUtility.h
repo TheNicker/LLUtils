@@ -36,7 +36,11 @@ SOFTWARE.
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 
+
+LLUTILS_DISABLE_WARNING_PUSH           
+LLUTILS_DISABLE_WARNING_RESEREVED_IDENTIFIER
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+LLUTILS_DISABLE_WARNING_POP
 
 #pragma push_macro("max")
 
@@ -180,7 +184,11 @@ namespace LLUtils
 
                 if (hMod != nullptr)
                 {
+LLUTILS_DISABLE_WARNING_PUSH          
+LLUTILS_DISABLE_WARNING_CAST_FUNCTION_TYPE
                     RtlGetVersionPtr fxPtr = reinterpret_cast<RtlGetVersionPtr>(::GetProcAddress(hMod, "RtlGetVersion"));
+LLUTILS_DISABLE_WARNING_POP
+
                     if (fxPtr != nullptr)
                     {
                         vi.dwOSVersionInfoSize = sizeof(vi);

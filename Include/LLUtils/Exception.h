@@ -47,7 +47,7 @@ namespace LLUtils
             , InvalidState
             , SystemError
 			, NotFound
-            , __Count__
+            , Count
         };
         enum class Mode
         {
@@ -115,7 +115,7 @@ namespace LLUtils
 
         static std::wstring ExceptionErrorCodeToString(ErrorCode errorCode)
         {
-            static std::array<std::wstring, static_cast<size_t>( ErrorCode::__Count__)> errorcodeToString =
+            static std::array<std::wstring, static_cast<size_t>( ErrorCode::Count)> errorcodeToString =
             {
                  L"Unspecified"
                 ,L"Unknown"

@@ -66,47 +66,53 @@ namespace LLUtils
         {
             SYSTEMTIME time;
             constexpr size_t BufferSize = 24;
+            native_string_type result;
             std::array<native_char_type, BufferSize> buffer;
             GetLocalTime(&time);
             constexpr native_char_type dateFormat[] = LLUTILS_TEXT("yyyy-MM-dd");
             int ret = GetDateFormat(LOCALE_SYSTEM_DEFAULT, 0, &time, dateFormat, buffer.data(), sizeof(dateFormat));
-            native_char_type* currentPos = buffer.data() + array_length(dateFormat) - 1;
-            *currentPos++ = ' ';
+            if (ret > 0)
+            {
+                native_char_type* currentPos = buffer.data() + array_length(dateFormat) - 1;
+                *currentPos++ = ' ';
 
-            constexpr native_char_type timeFormat[] = LLUTILS_TEXT("HH:mm:ss");
-            ret = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, TIME_FORCE24HOURFORMAT, &time, timeFormat, currentPos, sizeof(timeFormat));
-            currentPos += array_length(timeFormat) - 1;
+                constexpr native_char_type timeFormat[] = LLUTILS_TEXT("HH:mm:ss");
+                ret = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, TIME_FORCE24HOURFORMAT, &time, timeFormat, currentPos, sizeof(timeFormat));
+                if (ret > 0)
+                {
+                    currentPos += array_length(timeFormat) - 1;
 
-            *currentPos++ = '.';
-            const native_char_type* millisecPos = currentPos;
+                    *currentPos++ = '.';
+                    const native_char_type* millisecPos = currentPos;
 
-            WORD millisec = time.wMilliseconds;
+                    WORD millisec = time.wMilliseconds;
 
-            if (millisec < 100)
-                *currentPos++ = '0';
-            if (millisec < 10)
-                *currentPos++ = '0';
+                    if (millisec < 100)
+                        *currentPos++ = '0';
+                    if (millisec < 10)
+                        *currentPos++ = '0';
 
-            size_t length = (3 - static_cast<size_t>(currentPos - millisecPos));
-            size_t size = length * sizeof(native_char_type);
-            
-                memcpy_s(currentPos
-                    ,size
+                    size_t length = (3 - static_cast<size_t>(currentPos - millisecPos));
+                    size_t size = length * sizeof(native_char_type);
+
+                    memcpy_s(currentPos
+                        , size
 #if LLUTILS_CHARSET == LLUTILS_CHARSET_UNICODE
-                ,std::to_wstring(millisec).c_str()
+                        , std::to_wstring(millisec).c_str()
 #else 
-                ,std::to_string(millisec).c_str()
+                        , std::to_string(millisec).c_str()
 #endif
-            
-            ,size);
 
-            currentPos += length;
-            *currentPos++ = '\0';
+                        , size);
 
-            assert("Mismatch buffer size" && currentPos - buffer.data() == BufferSize);
+                    currentPos += length;
+                    *currentPos++ = '\0';
 
-            return native_string_type(buffer.data());
-
+                    assert("Mismatch buffer size" && currentPos - buffer.data() == BufferSize);
+                    result = native_string_type(buffer.data());
+                }
+            }
+            return result;
         }
 #endif
 
