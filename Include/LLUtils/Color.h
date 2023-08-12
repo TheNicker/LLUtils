@@ -104,10 +104,12 @@ namespace LLUtils
             static_assert(std::is_floating_point<channel_type>(), "Only floating point support normalization");
 
             return  {
-                      R() / static_cast<channel_type>(max_channel_value)
-                    , G() / static_cast<channel_type>(max_channel_value)
-                    , B() / static_cast<channel_type>(max_channel_value)
-                    , A() / static_cast<channel_type>(max_channel_value)
+                    {
+                          R() / static_cast<channel_type>(max_channel_value)
+                        , G() / static_cast<channel_type>(max_channel_value)
+                        , B() / static_cast<channel_type>(max_channel_value)
+                        , A() / static_cast<channel_type>(max_channel_value)
+                    }
                     };
         }
 
@@ -238,17 +240,17 @@ namespace LLUtils
 
                 //Assign two bytes componenets
                 for (; comp < componentsToProcessInLoop; comp++)
-                    colorBytes.at(comp) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) ,0 });
+                    colorBytes.at(comp) = HexPairToByte({ { view.at(comp * 2), view.at(comp * 2 + 1) ,0 } });
 
                 //Assign last single component, alpha or color.
                 if (lastSingleDigitComponent == true)
-                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({ '0', view.at(comp * 2) ,0 });
+                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({ { '0', view.at(comp * 2) ,0 } });
 
                 //Assign default alpha if no alpha provided
                 if (isAlphaChannel == false)
                     colorBytes.at(3) = DefaultAlphaValue;
                 else if (lastSingleDigitComponent == false) // if two components alpha.
-                    colorBytes.at(3) = HexPairToByte({ view.at(comp * 2), view.at(comp * 2 + 1) ,0 });
+                    colorBytes.at(3) = HexPairToByte({ { view.at(comp * 2), view.at(comp * 2 + 1) ,0 } });
 
 
                 return { colorBytes };

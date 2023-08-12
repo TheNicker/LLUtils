@@ -70,13 +70,13 @@ namespace LLUtils
 			StackTrace stackTrace;
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && defined(LLUTILS_ENABLE_DEBUG_SYMBOLS) &&  LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
-			constexpr size_t MaxStackTraceSize = std::numeric_limits<USHORT>::max();
+			constexpr USHORT MaxStackTraceSize = std::numeric_limits<USHORT>::max();
             
 			static thread_local std::array<void*, MaxStackTraceSize> stack;
 			const HANDLE         process = GetCurrentProcess();
 			            
 
-			unsigned short frames = CaptureStackBackTrace(framesToSkip, MaxStackTraceSize, stack.data(), nullptr);
+			unsigned short frames = CaptureStackBackTrace(static_cast<DWORD>(framesToSkip), MaxStackTraceSize, stack.data(), nullptr);
 			
 			static const std::string MutexPrefix = "OIV_Symbol_Api_Mutex";
 			

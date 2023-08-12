@@ -117,15 +117,17 @@ namespace LLUtils
         {
             static std::array<std::wstring, static_cast<size_t>( ErrorCode::Count)> errorcodeToString =
             {
-                 L"Unspecified"
-                ,L"Unknown"
-                ,L"Corrupted value"
-                ,L"Logic error"
-                ,L"Runtime error"
-                ,L"Duplicate item"
-                ,L"Bad parameters"
-                ,L"Missing implmentation"
-                ,L"System error"
+                {
+                     L"Unspecified"
+                    ,L"Unknown"
+                    ,L"Corrupted value"
+                    ,L"Logic error"
+                    ,L"Runtime error"
+                    ,L"Duplicate item"
+                    ,L"Bad parameters"
+                    ,L"Missing implmentation"
+                    ,L"System error"
+                }
             };
 
             size_t errorCodeInt = static_cast<size_t>(errorCode);

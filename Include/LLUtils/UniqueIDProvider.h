@@ -66,7 +66,7 @@ namespace LLUtils
 
         
 
-        const T Acquire()
+        T Acquire()
         {
             T result;
             if (fFreeIds.empty())
