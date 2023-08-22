@@ -39,6 +39,7 @@ namespace LLUtils
         constexpr inline BitFlags& operator|=(T rhs) { mValue |= rhs; return *this; }
         constexpr inline BitFlags& operator&=(T rhs) { mValue &= rhs; return *this; }
         constexpr inline bool test(T rhs) const { return (mValue & rhs) == rhs; }
+        constexpr inline bool testAny(T rhs) const { return (mValue & rhs) != BitFlags{}; }
         constexpr inline void set(T rhs) { mValue |= rhs; }
         constexpr inline void clear(T rhs) { mValue &= ~rhs; }
         constexpr inline T get() const { return mValue;}
