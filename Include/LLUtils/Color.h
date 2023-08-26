@@ -32,14 +32,15 @@ SOFTWARE.
 namespace LLUtils
 {
     /// <summary>
-    /// Color class stores 8 bit 4 colors channels in the order R, G ,B ,A where R is the lowest memory address and
+    /// Color class stores arbitrary width, 4 colors channels in the order R, G ,B ,A where R is the lowest memory address and
     ///  A is the highest.
     /// </summary>
 #pragma pack(push,1)
-    struct Color
+    template <typename channelType, size_t num_channels = 4>
+    struct ColorBase
     {
-        using color_channel_type = uint8_t;
-        static constexpr size_t num_channels = 4;
+        using color_channel_type = channelType;
+        static constexpr size_t num_channels = num_channels;
         template <typename channel_type>
         using GenericColorData = std::array<channel_type, num_channels>;
         using ColorData = GenericColorData<color_channel_type>;
@@ -47,45 +48,45 @@ namespace LLUtils
         static constexpr color_channel_type max_channel_value = (std::numeric_limits<color_channel_type>::max)();
 
         ColorData channels;
-        
-        constexpr color_channel_type& R() { return channels[0];}
-        constexpr color_channel_type& G() { return channels[1];}
-        constexpr color_channel_type& B() { return channels[2];}
-        constexpr color_channel_type& A() { return channels[3];}
+
+        constexpr color_channel_type& R() { return channels[0]; }
+        constexpr color_channel_type& G() { return channels[1]; }
+        constexpr color_channel_type& B() { return channels[2]; }
+        constexpr color_channel_type& A() { return channels[3]; }
 
         constexpr const color_channel_type& R() const { return channels[0]; }
         constexpr const color_channel_type& G() const { return channels[1]; }
         constexpr const color_channel_type& B() const { return channels[2]; }
         constexpr const color_channel_type& A() const { return channels[3]; }
 
-        constexpr Color() = default;
-       
-        bool operator ==(const Color& rhs) const 
+        constexpr ColorBase() = default;
+
+        bool operator ==(const ColorBase& rhs) const
         {
             return channels == rhs.channels;
         }
 
-        bool operator !=(const Color& rhs) const
+        bool operator !=(const ColorBase& rhs) const
         {
             return channels != rhs.channels;
         }
-        
 
-        constexpr Color(ColorData _channels)
+
+        constexpr ColorBase(ColorData _channels)
         {
             channels = _channels;
         }
 
-      /// <summary>
-      /// Initialize color from a 32 bit number in the form RRGGBBAA.
-      /// Reverse byte order on little endian platform.
-      /// </summary>
-      /// <param name="color"></param>
-	  
-        Color(uint32_t color)
+        /// <summary>
+        /// Initialize color from a 32 bit number in the form RRGGBBAA.
+        /// Reverse byte order on little endian platform.
+        /// </summary>
+        /// <param name="color"></param>
+
+        ColorBase(uint32_t color)
         {
             // make sure Color class stores color values in 8 bit X 4 channels to match the 32 bit 
-			// color parameter
+            // color parameter
             static_assert(sizeof(color) == sizeof(channels), "default color size is not 32 bit");
             if constexpr (std::endian::native == std::endian::little)
             {
@@ -99,6 +100,7 @@ namespace LLUtils
         }
 
         template <class channel_type>
+        [[deprecated("Cast to ColorBase<float> instead")]] 
         constexpr const GenericColorData<channel_type> GetNormalizedColorValue() const
         {
             static_assert(std::is_floating_point<channel_type>(), "Only floating point support normalization");
@@ -110,32 +112,55 @@ namespace LLUtils
                         , B() / static_cast<channel_type>(max_channel_value)
                         , A() / static_cast<channel_type>(max_channel_value)
                     }
-                    };
+            };
         }
 
-		
-		//Floating point constructor
-		template <typename ParamType, typename std::enable_if_t<std::is_floating_point_v<ParamType>, int> = 0>
-        constexpr Color(ParamType r, ParamType g, ParamType b, ParamType a = 1.0)
-		{
-            R() = static_cast<color_channel_type>(std::round(r * static_cast<ParamType>(max_channel_value)));
-            G() = static_cast<color_channel_type>(std::round(g * static_cast<ParamType>(max_channel_value)));
-            B() = static_cast<color_channel_type>(std::round(b * static_cast<ParamType>(max_channel_value)));
-            A() = static_cast<color_channel_type>(std::round(a * static_cast<ParamType>(max_channel_value)));
-		}
 
-
-		//Intergal constructor
-		template <typename ParamType, typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
-        constexpr Color(ParamType r, ParamType g, ParamType b, ParamType a = max_channel_value)
+        //Floating point constructor
+        template <typename ParamType, typename std::enable_if_t<std::is_floating_point_v<ParamType>, int> = 0>
+        constexpr ColorBase(ParamType r, ParamType g, ParamType b, ParamType a = 1.0)
         {
-            R() = static_cast<color_channel_type>(r);
-            G() = static_cast<color_channel_type>(g);
-            B() = static_cast<color_channel_type>(b);
-            A() = static_cast<color_channel_type>(a);
+
+            if constexpr (std::is_integral<color_channel_type>())
+            {
+
+                R() = static_cast<color_channel_type>(std::round(r * static_cast<ParamType>(max_channel_value)));
+                G() = static_cast<color_channel_type>(std::round(g * static_cast<ParamType>(max_channel_value)));
+                B() = static_cast<color_channel_type>(std::round(b * static_cast<ParamType>(max_channel_value)));
+                A() = static_cast<color_channel_type>(std::round(a * static_cast<ParamType>(max_channel_value)));
+            }
+            else if constexpr (std::is_floating_point<color_channel_type>())
+            {
+                R() = static_cast<color_channel_type>(r);
+                G() = static_cast<color_channel_type>(g);
+                B() = static_cast<color_channel_type>(b);
+                A() = static_cast<color_channel_type>(a);
+            }
         }
 
-        static Color FromHSL(uint16_t hue, double sat, double lum)
+
+        //Intergal constructor
+        template <typename ParamType, typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
+        constexpr ColorBase(ParamType r, ParamType g, ParamType b, ParamType a = max_channel_value)
+        {
+            if constexpr (std::is_integral<color_channel_type>())
+            {
+                R() = static_cast<color_channel_type>(r);
+                G() = static_cast<color_channel_type>(g);
+                B() = static_cast<color_channel_type>(b);
+                A() = static_cast<color_channel_type>(a);
+            }
+            else if constexpr (std::is_floating_point<color_channel_type>())
+            {
+                constexpr ParamType max_value = std::numeric_limits<ParamType>::max();
+                R() = static_cast<color_channel_type>(r / static_cast<color_channel_type>(max_value));
+                G() = static_cast<color_channel_type>(g / static_cast<color_channel_type>(max_value));
+                B() = static_cast<color_channel_type>(b / static_cast<color_channel_type>(max_value));
+                A() = static_cast<color_channel_type>(a / static_cast<color_channel_type>(max_value));
+            }
+        }
+
+        static ColorBase FromHSL(uint16_t hue, double sat, double lum)
         {
             color_channel_type r = 0;
             color_channel_type g = 0;
@@ -161,17 +186,19 @@ namespace LLUtils
             return { r,g,b };
         }
 
-        Color Blend(const Color& source)
+        ColorBase Blend(const ColorBase& source)
         {
-            std::array<double, 4> normalizedDest = GetNormalizedColorValue<double>();
-            std::array<double, 4> normalizedSource = source.GetNormalizedColorValue<double>();
 
-            double invSourceAlpha = 1.0 - normalizedSource[3];
+            const auto dst = static_cast<ColorBase<double>>(*this);
+            const auto src = static_cast<ColorBase<double>>(source);  
 
-            double a = normalizedSource[3] + invSourceAlpha * normalizedDest[3];
-            double r = normalizedSource[0] * normalizedSource[3] + invSourceAlpha * normalizedDest[0] * normalizedDest[3];
-            double g = normalizedSource[1] * normalizedSource[3] + invSourceAlpha * normalizedDest[1] * normalizedDest[3];
-            double b = normalizedSource[2] * normalizedSource[3] + invSourceAlpha * normalizedDest[2] * normalizedDest[3];
+            const double invSourceAlpha = 1.0 - src.A();
+
+            double a = src.A() + invSourceAlpha * dst.A();
+            double r = src.R() * src.A() + invSourceAlpha * dst.R() * dst.A();
+            double g = src.G() * src.A() + invSourceAlpha * dst.G() * dst.A();
+            double b = src.B() * src.A() + invSourceAlpha * dst.B() * dst.A();
+
 
             if (a != 0.0)
             {
@@ -193,12 +220,58 @@ namespace LLUtils
                 blended.G /= blended.A;
                 blended.B /= blended.A;
             }
-            
+
             return blended;*/
         }
-        static Color FromString(const std::string& str)
+        template <typename new_type>
+        explicit operator ColorBase<new_type>() const
         {
-            static const Color DefaultParseFailureColor = Color(max_channel_value, max_channel_value, max_channel_value, max_channel_value);
+            return { R(),G(),B(),A() };
+        }
+
+
+        ColorBase MultiplyAlpha() const 
+        {
+            static_assert(std::is_floating_point_v<color_channel_type> == true, "Color underlying type needs to be a floating point");
+            return { R() * A() , G() * A(), B() * A() , A() };
+        }
+
+
+
+        ColorBase DivideAlpha() const
+        {
+            static_assert(std::is_floating_point_v<color_channel_type> == true, "Color underlying type needs to be a floating point");
+            if (A() != 0)
+                return { R() / A() , G() / A(), B() / A() , A() };
+            else 
+                return  { R() , G() , B()  , A() };
+        }
+
+
+        /// <summary>
+        /// Blend source color into this color for a multiplied alpha color space
+        /// </summary>
+        /// <typeparam name="enable_if_t"></typeparam>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        //template < std::enable_if_t<std::is_floating_point_v<color_channel_type>, int> = 0>
+        ColorBase BlendPreMultiplied(const ColorBase& source) const
+        {
+            static_assert(std::is_floating_point_v<color_channel_type> == true, "Color underlying type needs to be a floating point");
+            const color_channel_type invSourceAlpha = 1.0 - source.A();
+            return
+            { source.R() + R() * invSourceAlpha
+                ,  source.G() + G() * invSourceAlpha
+                ,  source.B() + B() * invSourceAlpha
+                ,  source.A() + A() * invSourceAlpha
+
+            };
+        }
+
+
+        static ColorBase FromString(const std::string& str)
+        {
+            static const ColorBase DefaultParseFailureColor = ColorBase(max_channel_value, max_channel_value, max_channel_value, max_channel_value);
             constexpr color_channel_type DefaultAlphaValue = max_channel_value;
             using namespace std;
 
@@ -260,7 +333,7 @@ namespace LLUtils
             auto splitValues = StringUtility::split(str, ',');
             bool error = false;
 
-            for (size_t i = 0; i < std::min(splitValues.size(), colorBytes.size()) ; i++)
+            for (size_t i = 0; i < std::min(splitValues.size(), colorBytes.size()); i++)
             {
                 try
                 {
@@ -284,25 +357,37 @@ namespace LLUtils
             return DefaultParseFailureColor;
         }
 
-        private:
-            static double HueToRGB(double v1, double v2, double vH) {
-                if (vH < 0)
-                    vH += 1;
+    private:
+        static double HueToRGB(double v1, double v2, double vH) {
+            if (vH < 0)
+                vH += 1;
 
-                if (vH > 1)
-                    vH -= 1;
+            if (vH > 1)
+                vH -= 1;
 
-                if ((6 * vH) < 1)
-                    return (v1 + (v2 - v1) * 6 * vH);
+            if ((6 * vH) < 1)
+                return (v1 + (v2 - v1) * 6 * vH);
 
-                if ((2 * vH) < 1)
-                    return v2;
+            if ((2 * vH) < 1)
+                return v2;
 
-                if ((3 * vH) < 2)
-                    return (v1 + (v2 - v1) * ((2.0 / 3.0) - vH) * 6);
+            if ((3 * vH) < 2)
+                return (v1 + (v2 - v1) * ((2.0 / 3.0) - vH) * 6);
 
-                return v1;
-            }
+            return v1;
+        }
     };
 #pragma pack(pop)
+    // 8 bit color per channel 
+    using Color = ColorBase<uint8_t>;
+    
+    //16 bit unsigned integer color channel
+    using ColorI16 = ColorBase<uint16_t>;
+    
+    //32 bit floating point color channel
+    using ColorF32 = ColorBase<float>;
+    
+    //64 bit floating point color channel
+    using ColorF64 = ColorBase<double>;
+
 }
