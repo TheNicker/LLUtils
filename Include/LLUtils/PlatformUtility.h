@@ -312,7 +312,17 @@ LLUTILS_DISABLE_WARNING_POP
 
         static default_string_type GetExePath()
         {
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
             return GetModulePath(GetModuleHandle(nullptr));
+            
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+            std::string getExePath()
+            {
+                char result[PATH_MAX]{};
+                ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+                return std::string(result, (count > 0) ? count : 0);
+            }
+#endif
         }
 
         static default_string_type GetExeFolder()

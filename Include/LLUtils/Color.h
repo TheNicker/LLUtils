@@ -36,11 +36,11 @@ namespace LLUtils
     ///  A is the highest.
     /// </summary>
 #pragma pack(push,1)
-    template <typename channelType, size_t num_channels = 4>
+    template <typename channelType, size_t numchannels = 4>
     struct ColorBase
     {
         using color_channel_type = channelType;
-        static constexpr size_t num_channels = num_channels;
+        static constexpr size_t num_channels = numchannels;
         template <typename channel_type>
         using GenericColorData = std::array<channel_type, num_channels>;
         using ColorData = GenericColorData<color_channel_type>;
@@ -99,22 +99,6 @@ namespace LLUtils
             }
         }
 
-        template <class channel_type>
-        [[deprecated("Cast to ColorBase<float> instead")]] 
-        constexpr const GenericColorData<channel_type> GetNormalizedColorValue() const
-        {
-            static_assert(std::is_floating_point<channel_type>(), "Only floating point support normalization");
-
-            return  {
-                    {
-                          R() / static_cast<channel_type>(max_channel_value)
-                        , G() / static_cast<channel_type>(max_channel_value)
-                        , B() / static_cast<channel_type>(max_channel_value)
-                        , A() / static_cast<channel_type>(max_channel_value)
-                    }
-            };
-        }
-
 
         //Floating point constructor
         template <typename ParamType, typename std::enable_if_t<std::is_floating_point_v<ParamType>, int> = 0>
@@ -140,8 +124,8 @@ namespace LLUtils
 
 
         //Intergal constructor
-        template <typename ParamType, typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
-        constexpr ColorBase(ParamType r, ParamType g, ParamType b, ParamType a = max_channel_value)
+        template <typename ParamType, ParamType max_value = std::numeric_limits<ParamType>::max(), typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
+        constexpr ColorBase(ParamType r, ParamType g, ParamType b, ParamType a = max_value)
         {
             if constexpr (std::is_integral<color_channel_type>())
             {
@@ -152,7 +136,6 @@ namespace LLUtils
             }
             else if constexpr (std::is_floating_point<color_channel_type>())
             {
-                constexpr ParamType max_value = std::numeric_limits<ParamType>::max();
                 R() = static_cast<color_channel_type>(r / static_cast<color_channel_type>(max_value));
                 G() = static_cast<color_channel_type>(g / static_cast<color_channel_type>(max_value));
                 B() = static_cast<color_channel_type>(b / static_cast<color_channel_type>(max_value));
