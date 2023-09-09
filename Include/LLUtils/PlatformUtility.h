@@ -33,6 +33,7 @@ SOFTWARE.
 #include "Utility.h"
 #include "StringUtility.h"
 #include "Buffer.h"
+#include <LLUtils/Warnings.h>
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 
@@ -331,26 +332,6 @@ LLUTILS_DISABLE_WARNING_POP
             return StringUtility::ToDefaultString(filesystem::path(GetExePath()).parent_path().wstring());
         }
 
-        static void CopyTextToClipBoard(const std::wstring& text)
-        {
-            if (OpenClipboard(nullptr) != FALSE)
-            {
-                size_t sizeOfCharType = sizeof(std::wstring::value_type);
-                size_t sizeInBytes = (text.size() + 1) * sizeOfCharType;
-                HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, sizeInBytes);
-                if (hg != nullptr)
-                {
-                    memcpy(GlobalLock(hg), text.c_str(), sizeInBytes);
-                    GlobalUnlock(hg);
-                    if (SetClipboardData(CF_UNICODETEXT, hg) == nullptr)
-                        GlobalFree(hg);
-                }
-
-                CloseClipboard();
-            }
-
-        }
-
         static void nanosleep(uint64_t ns) 
         {
             class NanoSleep
@@ -362,7 +343,7 @@ LLUTILS_DISABLE_WARNING_POP
                     if (!SetWaitableTimer(mTimer, &mLargeIntener, 0, nullptr, nullptr, FALSE))
                         throw std::logic_error("Error, could not set timer");
 
-                    WaitForSingleObject(mTimer, INFINITE);
+                    std::ignore = WaitForSingleObject(mTimer, INFINITE);
                 }
                 ~NanoSleep()
                 {
@@ -371,7 +352,7 @@ LLUTILS_DISABLE_WARNING_POP
 
             private:
                 HANDLE mTimer = CreateWaitableTimer(nullptr, TRUE, nullptr);
-                LARGE_INTEGER mLargeIntener;
+                LARGE_INTEGER mLargeIntener{};
             };
             
             static thread_local NanoSleep timer;
@@ -445,20 +426,23 @@ LLUTILS_DISABLE_WARNING_POP
 			{
 				if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) 
 				{
+                    size_t pos = 0;
 					auto buffer = std::make_unique<char[]>(len);
 					if (GetLogicalProcessorInformationEx(RelationAll, reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer.get()), &len))
-					{
-						char* ptr = buffer.get();
-						while (ptr < buffer.get() + len) 
+                    {
+                        while (pos < len)
 						{
-							PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX pi = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(ptr);
-							if (pi->Relationship == RelationProcessorCore) {
+                            PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX pi = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(&buffer[pos]);
+							if (pi->Relationship == RelationProcessorCore) 
+                            {
 								cores++;
-								for (size_t g = 0; g < pi->Processor.GroupCount; ++g) {
+LLUTILS_DISABLE_WARNING_PUSH
+LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
+								for (size_t g = 0; g < pi->Processor.GroupCount; ++g) 
 									logical += CountSetBits(pi->Processor.GroupMask[g].Mask);
-								}
+LLUTILS_DISABLE_WARNING_POP
 							}
-							ptr += pi->Size;
+                            pos += pi->Size;
 						}
 
 						result.physicalCores = static_cast<uint16_t>(cores);

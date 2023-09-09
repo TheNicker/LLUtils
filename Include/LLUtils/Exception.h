@@ -57,12 +57,12 @@ namespace LLUtils
 
         struct EventArgs
         {
-            ErrorCode errorCode;
+            ErrorCode errorCode{};
             std::wstring description;
             std::wstring systemErrorMessage;
             PlatformUtility::StackTrace stackTrace;
             std::wstring functionName;
-            Mode exceptionmode;
+            Mode exceptionmode{};
         };
 
     

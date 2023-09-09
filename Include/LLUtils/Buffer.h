@@ -26,6 +26,8 @@ SOFTWARE.
 #include <stdexcept>
 #include <cstring>
 #include <LLUtils/Platform.h>
+#include <LLUtils/Utility.h>
+#include <LLUtils/Warnings.h>
 
 #if __has_include(<LLUtilsBufferCustomAllocator.h>)
     #define LLUTILS_BUFFER_CUSTOM_ALLOCATOR 1
@@ -56,8 +58,9 @@ namespace LLUtils
 
         static std::byte * Allocate(size_t size)
         {
+            
         #if LLUTILS_COMPILER_MIN_VERSION(LLUTILS_COMPILER_MSVC, 1700)
-            return reinterpret_cast<std::byte*>(_aligned_malloc(size, Alignment));
+            return reinterpret_cast<std::byte*>(_aligned_malloc(LLUtils::Utility::Align<size_t>(size, Alignment), Alignment));
         #else
             return reinterpret_cast<std::byte*>(std::aligned_alloc(size, Alignment));
         #endif
@@ -199,10 +202,13 @@ namespace LLUtils
 
         void Write(const std::byte* BufferBase, size_t offset, size_t size)
         {
+LLUTILS_DISABLE_WARNING_PUSH
+LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
             if (offset + size <= fSize)
                 memcpy(fData + offset, BufferBase, size);
             else
                 throw std::runtime_error("Memory write overflow");
+LLUTILS_DISABLE_WARNING_POP
         }
 
         ~BufferBase()

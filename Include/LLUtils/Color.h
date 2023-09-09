@@ -47,7 +47,7 @@ namespace LLUtils
 
         static constexpr color_channel_type max_channel_value = (std::numeric_limits<color_channel_type>::max)();
 
-        ColorData channels;
+        ColorData channels{};
 
         constexpr color_channel_type& R() { return channels[0]; }
         constexpr color_channel_type& G() { return channels[1]; }
@@ -241,7 +241,7 @@ namespace LLUtils
         ColorBase BlendPreMultiplied(const ColorBase& source) const
         {
             static_assert(std::is_floating_point_v<color_channel_type> == true, "Color underlying type needs to be a floating point");
-            const color_channel_type invSourceAlpha = 1.0 - source.A();
+            const color_channel_type invSourceAlpha = static_cast<color_channel_type>(1.0) - source.A();
             return
             { source.R() + R() * invSourceAlpha
                 ,  source.G() + G() * invSourceAlpha

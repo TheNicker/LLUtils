@@ -41,8 +41,8 @@ namespace LLUtils
         static const Point<POINT_TYPE> Zero;
         static const Point<POINT_TYPE> One;
         
-        POINT_TYPE x;
-        POINT_TYPE y;
+        POINT_TYPE x{};
+        POINT_TYPE y{};
 
         using point_type = POINT_TYPE;
 
