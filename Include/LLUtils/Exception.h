@@ -94,7 +94,7 @@ namespace LLUtils
 
         }
 
-        Exception(ErrorCode errorCode, std::string function, std::string description, bool systemError, Mode exceptionMode)
+        Exception(ErrorCode errorCode, std::string function, std::string description, bool systemError, Mode exceptionMode,int callStackLevel = 2)
         {
             std::wstring systemErrorMessage;
             if (systemError == true)
@@ -105,7 +105,7 @@ namespace LLUtils
                   errorCode
                 , LLUtils::StringUtility::ToWString(description)
                 , systemErrorMessage
-                , PlatformUtility::GetCallStack(2)
+                , PlatformUtility::GetCallStack(callStackLevel)
                 , LLUtils::StringUtility::ToWString(function)
                 , exceptionMode
             };
