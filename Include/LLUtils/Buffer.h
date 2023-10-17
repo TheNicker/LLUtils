@@ -132,12 +132,12 @@ namespace LLUtils
             Swap(std::move(rhs));
         }
 
-        bool operator==(nullptr_t null) const
+        bool operator==(std::nullptr_t null) const
         {
             return fData == null;
         }
 
-        bool operator!=(nullptr_t null) const
+        bool operator!=(std::nullptr_t null) const
         {
             return fData != null;
         }

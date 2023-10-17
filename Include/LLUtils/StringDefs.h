@@ -29,18 +29,23 @@ SOFTWARE.
 namespace LLUtils
 {
 
-
-#if LLUTILS_CHARSET == LLUTILS_CHARSET_UNICODE
-    using native_char_type = wchar_t;
-#define LLUTILS_TEXT(T) L##T
-#else
-	using native_char_type = char;
-#define LLUTILS_TEXT(T) T
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+    #if LLUTILS_CHARSET == LLUTILS_CHARSET_UNICODE
+        using native_char_type = wchar_t; // UTF 16 in Windows
+        #define LLUTILS_TEXT(T) L##T
+        #else
+            using native_char_type = char; // Ascii in Windows
+        #define LLUTILS_TEXT(T) T
+    #endif
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+        using native_char_type = char; // UTF8 in linux
+        #define LLUTILS_TEXT(T) T
 #endif
+
     using native_string_type = std::basic_string<native_char_type>;
     using native_stringstream = std::basic_stringstream<native_char_type>;
 
-    using default_char_type = wchar_t;
+    using default_char_type = native_char_type;
     using default_string_type = std::basic_string<default_char_type>;
     using default_stringstream_type = std::basic_stringstream<default_char_type>;
 
@@ -48,8 +53,11 @@ namespace LLUtils
     using ListString = std::vector<string_type>;
     using ListStringIterator = ListString<>::iterator;
 
+    using ListNString = ListString<native_string_type>;
+    using ListNStringIterator = ListNString::iterator;
     using ListAString = ListString<std::string>;
     using ListAStringIterator = ListAString::iterator;
     using ListWString = ListString<std::wstring>;
     using ListWStringIterator = ListWString::iterator;
+
 }  

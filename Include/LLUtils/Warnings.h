@@ -29,11 +29,14 @@
     #define LLUTILS_DISABLE_WARNING_CONVERT_INT_TO_WCHAR_T
     #define LLUTILS_DISABLE_WARNING_RESEREVED_IDENTIFIER            LLUTILS_DISABLE_WARNING(-Wreserved-identifier)
     #define LLUTILS_DISABLE_WARNING_CAST_FUNCTION_TYPE              LLUTILS_DISABLE_WARNING(-Wcast-function-type)
-    #define LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE             LLUTILS_DISABLE_WARNING(-Wunsafe-buffer-usage)
     #define LLUTILS_DISABLE_WARNING_UNDEF                           LLUTILS_DISABLE_WARNING(-Wundef)
     #define LLUTILS_DISABLE_WARNING_DEPRECATED_DYNAMIC_EXCEPTION    LLUTILS_DISABLE_WARNING(-Wdeprecated-dynamic-exception-spec)
     
-    
+    #if defined(__clang__)
+        #define LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE             LLUTILS_DISABLE_WARNING(-Wunsafe-buffer-usage)
+    #elif defined(__GNUC__)
+        #define LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
+    #endif
 
 
     

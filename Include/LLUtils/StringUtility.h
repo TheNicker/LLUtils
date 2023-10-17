@@ -143,19 +143,20 @@ namespace LLUtils
         /// Copy string from source to destination
         /// </summary>
         /// <typeparam name="char_type"></typeparam>
-        /// <param name="dest">destination string to copy to</param>
+        /// <param name="dest">destination string to copy to</parggam>
         /// <param name="max_size">maximum size of destination buffer</param>
         /// <param name="source">source string to copy from</param>
+        
         template <typename char_type>
-        static errno_t StrCpy(char_type* dest, size_t max_size, const char_type* source)
+        static char_type* StrCpy(char_type* dest, const char_type* source, size_t size)
         {
             if constexpr (std::is_same_v<char, char_type>)
             {
-                return strcpy_s(dest, max_size, source);
+                return std::strncpy(dest,source, size);
             }
             else if constexpr (std::is_same_v<wchar_t, char_type>)
             {
-                return wcscpy_s(dest, max_size, source);
+                return std::wcsncpy(dest, source, size );
             }
             else 
             {
@@ -208,10 +209,11 @@ LLUTILS_DISABLE_WARNING_POP
 		private:
 			static std::wstring ConvertStringImp(const char* sourceString)
 			{
-				const std::size_t size = (std::strlen(sourceString) + 1) * 2;
-				auto buf = std::make_unique<wchar_t[]>(size);
-				swprintf_s(buf.get(), size, L"%S", sourceString);
-				return std::wstring(buf.get());
+                std::mbstate_t state{};
+                std::size_t len = 1 + std::mbsrtowcs(nullptr, &sourceString, 0, &state);
+                auto pBuff = std::make_unique<wchar_t[]>(len);
+                std::mbsrtowcs(pBuff.get(), &sourceString, len, &state);
+				return std::wstring(pBuff.get());
 			}
 
 
@@ -222,10 +224,10 @@ LLUTILS_DISABLE_WARNING_POP
 
 			static std::string ConvertStringImp(const wchar_t* sourceString)
 			{
-				std::size_t size = wcslen(sourceString) + 1;
-				auto pBuff = std::make_unique<char[]>(size);
-				std::size_t converted;
-				wcstombs_s(&converted, pBuff.get(), size, sourceString, size * 2);
+                std::mbstate_t state{};
+                std::size_t len = 1 + std::wcsrtombs(nullptr, &sourceString, 0, &state);
+                auto pBuff = std::make_unique<char[]>(len);
+                std::wcsrtombs(pBuff.get(), &sourceString, len, &state);
 				return std::string(pBuff.get());
 			}
 
