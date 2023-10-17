@@ -22,15 +22,32 @@ SOFTWARE.
 
 #pragma once
 #include <filesystem>
-#include <Windows.h>
+#include <string>
+#include <cstdint>
+#include "Platform.h"
+#include "StringDefs.h"
+
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+    #include <Windows.h>
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+    #include <sys/mman.h>
+	#include <sys/stat.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+#endif
+
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+    using NATIVE_HANDLE = HANDLE;
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+    using NATIVE_HANDLE = int;
+#endif
+
 namespace LLUtils
 {
     class FileMapping
     {
-        
     public:
-
-        FileMapping(std::wstring filePath) : fFilePath(filePath)
+        FileMapping(const native_string_type& filePath) : fFilePath(filePath)
         {
             Open();
         }
@@ -48,50 +65,78 @@ namespace LLUtils
 
         void Close()
         {
-            if (mView != nullptr && UnmapViewOfFile(mView) == 0)
-                throw std::exception("Error unmapping file");
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+            if (fView != nullptr && UnmapViewOfFile(fView) == 0)
+                throw std::runtime_error("Error unmapping file");
 
-            if (mHandleMMF != nullptr && CloseHandle(mHandleMMF) == 0)
-                throw std::exception("Error unmapping file");
+            if (fHandleMMF != nullptr && CloseHandle(fHandleMMF) == 0)
+                throw std::runtime_error("Error unmapping file");
 
-            if (mHandleFile != nullptr && CloseHandle(mHandleFile) == 0)
-                throw std::exception("Error unmapping file");
-
-            mView = mHandleMMF = mHandleFile = nullptr;
+            if (fHandleFile != nullptr && CloseHandle(fHandleFile) == 0)
+                throw std::runtime_error("Error unmapping file");
+            fView = fHandleMMF = fHandleFile = nullptr;   
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+        if (fView != MAP_FAILED && fView != nullptr && munmap(fView, fSize) == -1)
+            throw std::runtime_error("Error mapping file");
+        if (fHandleFile == -1 && close(fHandleFile) == -1)
+            throw std::runtime_error("Cannot close file");
+            fView = nullptr;
+            fHandleMMF = fHandleFile = 0;
+#endif
+        
         }
 
         void* GetBuffer() const
         {
-            return mView;
+            return fView;
         }
         uintmax_t GetSize() const
         {
-            return mSize;
+            return fSize;
         }
 
     private: //methods
 
         void OpenImp()
         {
-            mHandleFile = CreateFileW(fFilePath.c_str(), GENERIC_READ,
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+            fHandleFile = CreateFile(fFilePath.c_str(), GENERIC_READ,
                 FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
                 FILE_ATTRIBUTE_NORMAL, nullptr);
 
-            if (mHandleFile != INVALID_HANDLE_VALUE)
+            if (fHandleFile != INVALID_HANDLE_VALUE)
             {
-                mHandleMMF = CreateFileMapping(mHandleFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
-                if (mHandleMMF != nullptr)
-                    mView = MapViewOfFile(mHandleMMF, FILE_MAP_READ, 0, 0, 0);
+                fHandleMMF = CreateFileMapping(fHandleFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+                if (fHandleMMF != nullptr)
+                    fView = MapViewOfFile(fHandleMMF, FILE_MAP_READ, 0, 0, 0);
 
-                mSize = std::filesystem::file_size(fFilePath);
+                fSize = std::filesystem::file_size(fFilePath);
             }
+
+
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+        fHandleFile = open(fFilePath.c_str(), O_RDONLY);
+        if (fHandleFile == -1)
+            throw std::runtime_error("Cannot open file");
+
+        struct stat64 sb;
+        if (fstat64(fHandleFile, &sb) == -1)
+            throw std::runtime_error("Cannot get file information");
+
+        fSize = static_cast<uintmax_t>(sb.st_size);
+        fView = mmap(NULL, fSize, PROT_READ,
+                       MAP_PRIVATE, fHandleFile, 0);
+        if (fView == MAP_FAILED)
+            throw std::runtime_error("Cannot map file");
+
+#endif
         }
 
     private: // member fields
-        const std::wstring fFilePath;
-        uintmax_t mSize = 0;
-        HANDLE mHandleMMF = nullptr;
-        HANDLE mHandleFile = nullptr;
-        void *mView = nullptr;
+        const native_string_type fFilePath;
+        uintmax_t fSize{};
+        NATIVE_HANDLE fHandleMMF{};
+        NATIVE_HANDLE fHandleFile{};
+        void *fView = nullptr;
     };
 }

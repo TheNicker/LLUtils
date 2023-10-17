@@ -32,7 +32,7 @@ namespace LLUtils
     class File
     {
     public:
-        template <typename string_type = std::wstring, typename char_type = typename string_type::value_type>
+        template <typename string_type = native_string_type, typename char_type = typename string_type::value_type>
         static string_type ReadAllText(std::wstring filePath)
         {
             using namespace std;
@@ -48,14 +48,14 @@ namespace LLUtils
         }
 
 		template <class string_type, typename char_type = typename string_type::value_type >
-		static void WriteAllText(const std::wstring& filePath, const string_type& text, bool append = false)
+		static void WriteAllText(const native_string_type& filePath, const string_type& text, bool append = false)
 		{
 			using namespace std;
 			basic_ofstream<char_type, char_traits<char_type>> file(filePath, append ? std::ios_base::app : std::ios_base::out);
 			file << text;
 		}
 
-        static LLUtils::Buffer ReadAllBytes(std::wstring filePath)
+        static LLUtils::Buffer ReadAllBytes(native_string_type filePath)
         {
             using namespace std;
 			uintmax_t fileSize = filesystem::file_size(filePath);
@@ -66,12 +66,13 @@ namespace LLUtils
         }
 
 
-        static void WriteAllBytes(const std::wstring& filePath, const std::size_t size, const std::byte* const buffer, bool append = false)
+        static void WriteAllBytes(const native_string_type& filePath, const std::size_t size, const std::byte* const buffer, bool append = false)
         {
             using namespace std;
             
             filesystem::path path = FileSystemHelper::ResolveFullPath(filePath);
             filesystem::path parent = path.parent_path();
+            
             if (filesystem::exists(parent) == false)
                 filesystem::create_directory(parent);
 

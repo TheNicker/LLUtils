@@ -29,19 +29,19 @@ namespace LLUtils
     class FileSystemHelper
     {
     public:
-        static ListWString FindFiles(ListWString& filesList, std::filesystem::path workingDir, std::wstring fileTypes, bool recursive, bool caseSensitive)
+        static ListWString FindFiles(ListWString& filesList, std::filesystem::path workingDir, native_string_type fileTypes, bool recursive, bool caseSensitive)
         {
         
             using namespace std::filesystem;
-            ListWString extensions = StringUtility::split(fileTypes, L';');
-            std::set<std::wstring> extensionSet;
+            ListNString extensions = StringUtility::split(fileTypes, LLUTILS_TEXT(';'));
+            std::set<native_string_type> extensionSet;
 
             for (const auto& ext : extensions)
                 extensionSet.insert(caseSensitive == true ? ext : StringUtility::ToUpper(ext));
 
             auto AddFileIfExtensionsMatches = [&](const path& filePath)
             {
-                std::wstring extNoDot = filePath.extension().wstring();
+                native_string_type extNoDot = filePath.extension().string<native_char_type>();
                 
                 if (extNoDot.empty() == false)
                     extNoDot = extNoDot.substr(1);
@@ -61,7 +61,7 @@ namespace LLUtils
             return filesList;
         }
 
-        static std::wstring ResolveFullPath(std::wstring fileName)
+        static std::wstring ResolveFullPath(native_string_type fileName)
         {
             using namespace std::filesystem;
             path p(fileName);
