@@ -167,7 +167,7 @@ namespace LLUtils
     //  Microsoft 
     #define LLUTILS_EXPORT __declspec(dllexport)
     #define LLUTILS_IMPORT __declspec(dllimport)
-#elif LLUTILS_COMPILER == LLUTILS_COMPILER_GNUC
+#elif LLUTILS_COMPILER == LLUTILS_COMPILER_GNUC || LLUTILS_COMPILER == LLUTILS_COMPILER_CLANG
     //  GCC
     #define LLUTILS_EXPORT __attribute__((visibility("default")))
     #define LLUTILS_IMPORT

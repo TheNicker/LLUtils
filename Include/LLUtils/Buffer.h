@@ -62,7 +62,7 @@ namespace LLUtils
         #if LLUTILS_COMPILER_MIN_VERSION(LLUTILS_COMPILER_MSVC, 1700)
             return reinterpret_cast<std::byte*>(_aligned_malloc(LLUtils::Utility::Align<size_t>(size, Alignment), Alignment));
         #else
-            return reinterpret_cast<std::byte*>(std::aligned_alloc(size, Alignment));
+            return reinterpret_cast<std::byte*>(std::aligned_alloc(Alignment, LLUtils::Utility::Align<size_t>(size, Alignment)));
         #endif
         }
 

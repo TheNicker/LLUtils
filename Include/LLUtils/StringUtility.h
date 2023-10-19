@@ -22,11 +22,9 @@ SOFTWARE.
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable:4244) // when calling std::transform with ::tolower;
-
 #include "Platform.h"
 #include "Warnings.h"
+#include <memory>
 #include <string>
 #include <cstring>
 #include <vector>
@@ -238,5 +236,3 @@ LLUTILS_DISABLE_WARNING_POP
 
     };
 }
-
-#pragma warning(pop)

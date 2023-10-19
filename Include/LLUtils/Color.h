@@ -29,6 +29,10 @@ SOFTWARE.
 #include <bit>
 #include <cmath>
 
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+    #include <byteswap.h>
+#endif
+
 namespace LLUtils
 {
     /// <summary>
@@ -90,7 +94,12 @@ namespace LLUtils
             static_assert(sizeof(color) == sizeof(channels), "default color size is not 32 bit");
             if constexpr (std::endian::native == std::endian::little)
             {
+            #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
                 auto reversedBytes = _byteswap_ulong(color);
+            #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+                auto reversedBytes = bswap_32(color);
+            #endif
+
                 channels = *reinterpret_cast<ColorData*>(&reversedBytes);
             }
             else
