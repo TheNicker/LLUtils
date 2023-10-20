@@ -62,7 +62,7 @@ namespace LLUtils
         }
 
         template <class string_type = native_string_type, typename char_type = typename string_type::value_type >
-        static std::wstring ResolveFullPath(string_type fileName)
+        static string_type ResolveFullPath(string_type fileName)
         {
             using namespace std::filesystem;
             path p(fileName);
