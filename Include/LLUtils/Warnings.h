@@ -1,4 +1,5 @@
 #pragma once
+#include "Platform.h"
 #if defined(__GNUC__) || defined(__clang__)
     #define LLUTILS_DO_PRAGMA(X) _Pragma(#X)
     #define LLUTILS_DISABLE_WARNING_PUSH           LLUTILS_DO_PRAGMA(GCC diagnostic push)
@@ -32,15 +33,12 @@
     #define LLUTILS_DISABLE_WARNING_UNDEF                           LLUTILS_DISABLE_WARNING(-Wundef)
     #define LLUTILS_DISABLE_WARNING_DEPRECATED_DYNAMIC_EXCEPTION    LLUTILS_DISABLE_WARNING(-Wdeprecated-dynamic-exception-spec)
     
-    #if defined(__clang__)
+// use unsafe-buffer-usage only for clang >= 16
+#if LLUTILS_COMPILER == LLUTILS_COMPILER_CLANG && LLUTILS_COMP_VER >= 1600
         #define LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE             LLUTILS_DISABLE_WARNING(-Wunsafe-buffer-usage)
-    #elif defined(__GNUC__)
+#else
         #define LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
-    #endif
-
-
-    
-
+#endif
 
 
 
