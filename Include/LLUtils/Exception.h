@@ -58,10 +58,10 @@ namespace LLUtils
         struct EventArgs
         {
             ErrorCode errorCode{};
-            std::wstring description;
-            std::wstring systemErrorMessage;
+            native_string_type description;
+            native_string_type systemErrorMessage;
             PlatformUtility::StackTrace stackTrace;
-            std::wstring functionName;
+            native_string_type functionName;
             Mode exceptionmode{};
         };
 
@@ -73,21 +73,26 @@ namespace LLUtils
             sThrowErrorsInDebug = shouldThrow;
         }
 
-        static std::wstring FormatStackTrace(const PlatformUtility::StackTrace& stackTrace, uint16_t maxDepth = std::numeric_limits<uint16_t>::max())
+        static native_string_type FormatStackTrace(const PlatformUtility::StackTrace& stackTrace, uint16_t maxDepth = std::numeric_limits<uint16_t>::max())
         {
             using namespace std;
-            wstringstream ss;
+            using char_type = native_string_type::value_type;
+            basic_stringstream<char_type> ss;
             uint16_t depth = 0;
 			for (const auto& f : stackTrace)
 			{
                 if (depth++ > maxDepth)
                     break;
 
-				ss << filesystem::path(f.moduleName).filename().wstring() << L"!" << f.name;
+				ss << filesystem::path(f.moduleName).filename().string<char_type>() << LLUTILS_TEXT("!") << f.name;
 				if (f.sourceFileName.empty() == false)
-					ss << L" at " << f.sourceFileName << dec << L" line: " << f.line << L" column: " << f.displacement;
+					ss << LLUTILS_TEXT(" at ") << f.sourceFileName << dec << LLUTILS_TEXT(" line: ") << f.line 
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 
+                    << LLUTILS_TEXT(" column: ") << f.displacement
+#endif
+                    ;
 
-				ss << L" at address 0x" << hex << f.address << endl;
+				ss << LLUTILS_TEXT(" at address 0x") << hex << f.address << endl;
 			}
 			
             return ss.str();
@@ -96,37 +101,37 @@ namespace LLUtils
 
         Exception(ErrorCode errorCode, std::string function, std::string description, bool systemError, Mode exceptionMode,int callStackLevel = 2)
         {
-            std::wstring systemErrorMessage;
+            native_string_type systemErrorMessage;
             if (systemError == true)
-                systemErrorMessage = PlatformUtility::GetLastErrorAsString() ;
+                systemErrorMessage = PlatformUtility::GetLastErrorAsString<native_string_type::value_type>() ;
             
             EventArgs args =
             {
                   errorCode
-                , LLUtils::StringUtility::ToWString(description)
+                , LLUtils::StringUtility::ToNativeString(description)
                 , systemErrorMessage
                 , PlatformUtility::GetCallStack(callStackLevel)
-                , LLUtils::StringUtility::ToWString(function)
+                , LLUtils::StringUtility::ToNativeString(function)
                 , exceptionMode
             };
             
             OnException.Raise(args);
         }
 
-        static std::wstring ExceptionErrorCodeToString(ErrorCode errorCode)
+        static native_string_type ExceptionErrorCodeToString(ErrorCode errorCode)
         {
-            static std::array<std::wstring, static_cast<size_t>( ErrorCode::Count)> errorcodeToString =
+            static std::array<native_string_type, static_cast<size_t>( ErrorCode::Count)> errorcodeToString =
             {
                 {
-                     L"Unspecified"
-                    ,L"Unknown"
-                    ,L"Corrupted value"
-                    ,L"Logic error"
-                    ,L"Runtime error"
-                    ,L"Duplicate item"
-                    ,L"Bad parameters"
-                    ,L"Missing implmentation"
-                    ,L"System error"
+                     LLUTILS_TEXT("Unspecified")
+                    ,LLUTILS_TEXT("Unknown")
+                    ,LLUTILS_TEXT("Corrupted value")
+                    ,LLUTILS_TEXT("Logic error")
+                    ,LLUTILS_TEXT("Runtime error")
+                    ,LLUTILS_TEXT("Duplicate item")
+                    ,LLUTILS_TEXT("Bad parameters")
+                    ,LLUTILS_TEXT("Missing implmentation")
+                    ,LLUTILS_TEXT("System error")
                 }
             };
 
@@ -135,7 +140,7 @@ namespace LLUtils
             if (errorCodeInt < errorcodeToString.size())
                 return errorcodeToString[errorCodeInt];
             else
-                return L"Unspecified";
+                return LLUTILS_TEXT("Unspecified");
         }
         static inline bool sThrowErrorsInDebug = true;
     };
