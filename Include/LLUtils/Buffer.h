@@ -30,8 +30,8 @@ SOFTWARE.
 #include <LLUtils/Warnings.h>
 
 #if __has_include(<LLUtilsBufferCustomAllocator.h>)
-    #define LLUTILS_BUFFER_CUSTOM_ALLOCATOR 1
-    #include <LLUtilsBufferCustomAllocator.h>
+#define LLUTILS_BUFFER_CUSTOM_ALLOCATOR 1
+#include <LLUtilsBufferCustomAllocator.h>
 #endif
 
 namespace LLUtils
@@ -56,23 +56,29 @@ namespace LLUtils
     public:
         static constexpr int Alignment = 16;
 
-        static std::byte * Allocate(size_t size)
+        static std::byte* Allocate(size_t size)
         {
-            
-        #if LLUTILS_COMPILER_MIN_VERSION(LLUTILS_COMPILER_MSVC, 1700)
+            //The Universal CRT doesn't implement C11 aligned_alloc, but does provide _aligned_malloc and _aligned_free.
+            //Because the Windows operating system doesn't support aligned allocations, this function is unlikely to be implemented.
+            //https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance?view=msvc-170#note_M
+#if(LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32)
             return reinterpret_cast<std::byte*>(_aligned_malloc(LLUtils::Utility::Align<size_t>(size, Alignment), Alignment));
-        #else
+#else
+
             return reinterpret_cast<std::byte*>(std::aligned_alloc(Alignment, LLUtils::Utility::Align<size_t>(size, Alignment)));
-        #endif
+#endif
         }
 
         static void Deallocate(std::byte* buffer)
         {
-        #if LLUTILS_COMPILER_MIN_VERSION(LLUTILS_COMPILER_MSVC, 1700)
+            //The Universal CRT doesn't implement C11 aligned_alloc, but does provide _aligned_malloc and _aligned_free.
+            //Because the Windows operating system doesn't support aligned allocations, this function is unlikely to be implemented.
+            //https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance?view=msvc-170#note_M
+#if(LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32)
             _aligned_free(buffer);
-        #else
-            std::free(buffer);           
-        #endif
+#else
+            std::free(buffer);
+#endif
         }
     };
 
@@ -82,8 +88,8 @@ namespace LLUtils
 #else
     using DefaultAllocator = AlignedAlloc;
 #endif
-    
-    
+
+
     template <typename Alloc>
     class BufferBase
     {
@@ -108,14 +114,14 @@ namespace LLUtils
 
         BufferBase(const BufferBase& rhs, size_t size) : BufferBase(rhs.data(), size)
         {
-            
+
         }
 
         BufferBase(const BufferBase& rhs)
         {
             *this = rhs.Clone();
         }
-        
+
         BufferBase(BufferBase&& rhs) noexcept
         {
             Swap(std::move(rhs));
@@ -154,13 +160,13 @@ namespace LLUtils
             return cloned;
         }
 
-		[[deprecated("deprecated, use Buffer::data() instead")]]
+        [[deprecated("deprecated, use Buffer::data() instead")]]
         const std::byte* GetBuffer() const
         {
             return fData;
         }
 
-		[[deprecated("deprecated, use Buffer::data() instead")]]
+        [[deprecated("deprecated, use Buffer::data() instead")]]
         std::byte* GetBuffer()
         {
             return fData;
@@ -171,15 +177,15 @@ namespace LLUtils
             return fData;
         }
 
-		std::byte* data()
-		{
-			return fData;
-		}
+        std::byte* data()
+        {
+            return fData;
+        }
 
-		const std::byte* data() const
-		{
-			return fData;
-		}
+        const std::byte* data() const
+        {
+            return fData;
+        }
 
 
         void Free()
@@ -202,13 +208,13 @@ namespace LLUtils
 
         void Write(const std::byte* BufferBase, size_t offset, size_t size)
         {
-LLUTILS_DISABLE_WARNING_PUSH
-LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
-            if (offset + size <= fSize)
-                memcpy(fData + offset, BufferBase, size);
-            else
-                throw std::runtime_error("Memory write overflow");
-LLUTILS_DISABLE_WARNING_POP
+            LLUTILS_DISABLE_WARNING_PUSH
+                LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
+                if (offset + size <= fSize)
+                    memcpy(fData + offset, BufferBase, size);
+                else
+                    throw std::runtime_error("Memory write overflow");
+            LLUTILS_DISABLE_WARNING_POP
         }
 
         ~BufferBase()
@@ -221,10 +227,10 @@ LLUTILS_DISABLE_WARNING_POP
             return fSize;
         }
 
-		size_t size() const
-		{
-			return fSize;
-		}
+        size_t size() const
+        {
+            return fSize;
+        }
 
 
         // buffer must have been allocated with the corresponding Allocator.
@@ -236,7 +242,7 @@ LLUTILS_DISABLE_WARNING_POP
         }
 
         // buffer must be freed  with the corresponding Allocator.
-        void RemoveOwnership(size_t& size , std::byte*& data)
+        void RemoveOwnership(size_t& size, std::byte*& data)
         {
             size = fSize;
             fSize = 0;

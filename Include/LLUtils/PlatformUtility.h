@@ -21,6 +21,7 @@ SOFTWARE.
 */
 
 #pragma once
+
 #include <array>
 #include "Platform.h"
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32

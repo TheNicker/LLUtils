@@ -36,7 +36,7 @@ namespace LLUtils
         static string_type ReadAllText(native_string_type filePath)
         {
             using namespace std;
-            basic_ifstream<char_type, char_traits<char_type>> t(filePath);
+            basic_ifstream<char_type, char_traits<char_type>> t(filePath.c_str());
             if (t.is_open())
             {
                 basic_stringstream<char_type>  buffer;
@@ -51,7 +51,7 @@ namespace LLUtils
 		static void WriteAllText(const string_type& filePath, const string_type& text, bool append = false)
 		{
 			using namespace std;
-			basic_ofstream<char_type, char_traits<char_type>> file(filePath, append ? std::ios_base::app : std::ios_base::out);
+			basic_ofstream<char_type, char_traits<char_type>> file(filePath.c_str(), append ? std::ios_base::app : std::ios_base::out);
 			file << text;
 		}
 
