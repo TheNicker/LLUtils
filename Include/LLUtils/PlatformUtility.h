@@ -30,8 +30,8 @@ SOFTWARE.
 #include <DbgHelp.h>
 #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
 #include <execinfo.h> /* backtrace, backtrace_symbols */
-#include <dlfcn.h>  // for dladdr
-#include <cxxabi.h> // for __cxa_demangle
+#include <dlfcn.h>    // for dladdr
+#include <cxxabi.h>   // for __cxa_demangle
 #include <sys/resource.h>
 #include <algorithm>
 #include <time.h>
@@ -60,34 +60,34 @@ namespace LLUtils
 {
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
-  namespace
-  {
-    std::string sh(std::string cmd)
+    namespace
     {
-        std::array<char, 128> buffer;
-        std::string result;
-        std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-        if (!pipe)
-            throw std::runtime_error("popen() failed!");
-        while (!feof(pipe.get()))
+        std::string sh(std::string cmd)
         {
-            if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
+            std::array<char, 128> buffer;
+            std::string result;
+            std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+            if (!pipe)
+                throw std::runtime_error("popen() failed!");
+            while (!feof(pipe.get()))
             {
-                result += buffer.data();
+                if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
+                {
+                    result += buffer.data();
+                }
             }
+            result = LLUtils::StringUtility::rtrim(result, "\n");
+            return result;
         }
-        result = LLUtils::StringUtility::rtrim(result,"\n");
-        return result;
-    }
-  }
+    }  // namespace
 #endif
 
     class PlatformUtility
     {
-    public:
+      public:
+
         struct StackTraceEntry
         {
-
             native_string_type moduleName;
             native_string_type name;
             native_string_type sourceFileName;
@@ -102,12 +102,14 @@ namespace LLUtils
         {
             StackTrace stackTrace;
 
-#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && defined(LLUTILS_ENABLE_DEBUG_SYMBOLS) && LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && defined(LLUTILS_ENABLE_DEBUG_SYMBOLS) &&                             \
+    LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
             constexpr USHORT MaxStackTraceSize = std::numeric_limits<USHORT>::max();
-            static thread_local std::array<void *, MaxStackTraceSize> stack;
+            static thread_local std::array<void*, MaxStackTraceSize> stack;
             const HANDLE process = GetCurrentProcess();
 
-            unsigned short frames = CaptureStackBackTrace(static_cast<DWORD>(framesToSkip), MaxStackTraceSize, stack.data(), nullptr);
+            unsigned short frames = CaptureStackBackTrace(static_cast<DWORD>(framesToSkip), MaxStackTraceSize,
+                                                          stack.data(), nullptr);
 
             static const std::string MutexPrefix = "OIV_Symbol_Api_Mutex";
 
@@ -130,41 +132,43 @@ namespace LLUtils
                     }
                 }
 
-            private:
+              private:
+
                 const HANDLE mutexLock = nullptr;
             };
 
             ScopedMutex lock(false);
 
-			constexpr size_t maxNameLength = 255;
-			constexpr size_t sizeOfStruct = sizeof(SYMBOL_INFOW);
-			auto symbolReservedMemory = std::make_unique<std::byte[]>(sizeOfStruct + (maxNameLength - 1) * sizeof(TCHAR));
-			SYMBOL_INFOW * symbol = reinterpret_cast<SYMBOL_INFOW*>(symbolReservedMemory.get());
+            constexpr size_t maxNameLength = 255;
+            constexpr size_t sizeOfStruct = sizeof(SYMBOL_INFOW);
+            auto symbolReservedMemory = std::make_unique<std::byte[]>(sizeOfStruct +
+                                                                      (maxNameLength - 1) * sizeof(TCHAR));
+            SYMBOL_INFOW* symbol = reinterpret_cast<SYMBOL_INFOW*>(symbolReservedMemory.get());
 
-			if (SymInitializeW(process, nullptr, TRUE) == TRUE)
-			{
-				symbol->MaxNameLen = maxNameLength;
-				symbol->SizeOfStruct = sizeOfStruct;
-				
-				stackTrace.resize(frames);
-				for (size_t i = 0; i < frames; i++)
-				{
-					StackTraceEntry& entry = stackTrace[i];
+            if (SymInitializeW(process, nullptr, TRUE) == TRUE)
+            {
+                symbol->MaxNameLen = maxNameLength;
+                symbol->SizeOfStruct = sizeOfStruct;
 
-					const DWORD64 memoryAddress = reinterpret_cast<DWORD64>(stack[i]);
+                stackTrace.resize(frames);
+                for (size_t i = 0; i < frames; i++)
+                {
+                    StackTraceEntry& entry = stackTrace[i];
 
-					entry.address = memoryAddress;
+                    const DWORD64 memoryAddress = reinterpret_cast<DWORD64>(stack[i]);
 
-					if (SymFromAddrW(process, memoryAddress, nullptr, symbol) == TRUE)
-					{
-						entry.name = symbol->Name;
-						entry.address = symbol->Address;
-					}
+                    entry.address = memoryAddress;
+
+                    if (SymFromAddrW(process, memoryAddress, nullptr, symbol) == TRUE)
+                    {
+                        entry.name = symbol->Name;
+                        entry.address = symbol->Address;
+                    }
 
                     IMAGEHLP_LINEW64 line;
                     line.SizeOfStruct = sizeof(IMAGEHLP_LINEW64);
                     DWORD disp;
-					if (SymGetLineFromAddrW64(process, memoryAddress, &disp, &line) == TRUE)
+                    if (SymGetLineFromAddrW64(process, memoryAddress, &disp, &line) == TRUE)
                     {
                         entry.line = line.LineNumber;
                         entry.displacement = disp;
@@ -174,7 +178,7 @@ namespace LLUtils
                     IMAGEHLP_MODULEW64 module64;
                     module64.SizeOfStruct = sizeof(IMAGEHLP_MODULEW64);
 
-					if (SymGetModuleInfoW64(process, memoryAddress, &module64) == TRUE)
+                    if (SymGetModuleInfoW64(process, memoryAddress, &module64) == TRUE)
                     {
                         entry.moduleName = module64.ImageName;
                     }
@@ -188,9 +192,9 @@ namespace LLUtils
             rlimit limit;
             getrlimit(RLIMIT_STACK, &limit);
             const int maxFrames = limit.rlim_cur;
-            auto callstackPtrs = std::make_unique<void *[]>(maxFrames);
+            auto callstackPtrs = std::make_unique<void*[]>(maxFrames);
             int nFrames = backtrace(callstackPtrs.get(), maxFrames);
-            char **symbols = backtrace_symbols(callstackPtrs.get(), nFrames);
+            char** symbols = backtrace_symbols(callstackPtrs.get(), nFrames);
             stackTrace.resize(nFrames - framesToSkip);
             auto exec_path = GetExePath();
 
@@ -198,14 +202,14 @@ namespace LLUtils
             {
                 int currentFrame = i + framesToSkip;
                 Dl_info info;
-                StackTraceEntry &entry = stackTrace[i];
-                entry.address = (uint64_t)callstackPtrs[currentFrame];
+                StackTraceEntry& entry = stackTrace[i];
+                entry.address = (uint64_t) callstackPtrs[currentFrame];
                 if (dladdr(callstackPtrs[currentFrame], &info))
                 {
                     if (info.dli_saddr != nullptr)
                     {
                         entry.moduleName = info.dli_fname;
-                        void *symAddr = (void *)((char *)info.dli_saddr - (char *)info.dli_fbase);
+                        void* symAddr = (void*) ((char*) info.dli_saddr - (char*) info.dli_fbase);
                         std::stringstream ss;
                         ss << symAddr;
 
@@ -224,7 +228,7 @@ namespace LLUtils
                             }
                         }
 
-                        char *demangled = NULL;
+                        char* demangled = NULL;
                         int status{};
                         size_t size{};
                         demangled = abi::__cxa_demangle(info.dli_sname, nullptr, &size, &status);
@@ -243,7 +247,7 @@ namespace LLUtils
                     }
                 }
             }
-                free(symbols);
+            free(symbols);
 #endif
             return stackTrace;
         }
@@ -266,7 +270,7 @@ namespace LLUtils
 
                 using NTSTATUS = LONG;
                 constexpr NTSTATUS STATUS_SUCCESS = 0x00000000;
-                using RtlGetVersionPtr = INT_PTR(FAR WINAPI *)(Win32VersionInfo *);
+                using RtlGetVersionPtr = INT_PTR(FAR WINAPI*)(Win32VersionInfo*);
 
                 Win32VersionInfo vi{};
 
@@ -274,7 +278,8 @@ namespace LLUtils
                 {
                     LLUTILS_DISABLE_WARNING_PUSH
                     LLUTILS_DISABLE_WARNING_CAST_FUNCTION_TYPE
-                    RtlGetVersionPtr fxPtr = reinterpret_cast<RtlGetVersionPtr>(::GetProcAddress(hMod, "RtlGetVersion"));
+                    RtlGetVersionPtr fxPtr = reinterpret_cast<RtlGetVersionPtr>(
+                        ::GetProcAddress(hMod, "RtlGetVersion"));
                     LLUTILS_DISABLE_WARNING_POP
 
                     if (fxPtr != nullptr)
@@ -293,7 +298,7 @@ namespace LLUtils
             return {win32Version.dwMajorVersion, win32Version.dwMinorVersion, win32Version.dwBuildNumber};
 
 #else
-                throw std::runtime_error("GetOSVersion: Not implemented in the current platform.");
+            throw std::runtime_error("GetOSVersion: Not implemented in the current platform.");
 #endif
         }
 
@@ -302,11 +307,7 @@ namespace LLUtils
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
             native_char_type szPath[MAX_PATH];
 
-            if (SUCCEEDED(SHGetFolderPath(nullptr,
-                                          CSIDL_APPDATA | CSIDL_FLAG_CREATE,
-                                          nullptr,
-                                          0,
-                                          szPath)))
+            if (SUCCEEDED(SHGetFolderPath(nullptr, CSIDL_APPDATA | CSIDL_FLAG_CREATE, nullptr, 0, szPath)))
             {
                 native_string_type result = szPath;
                 return result;
@@ -314,16 +315,17 @@ namespace LLUtils
 
             return native_string_type();
 #else
-                throw std::logic_error("GetAppDataFolder: Not implemented in the current platform.");
-                // TODO: Make the exception call below work here
-                // LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented,);
+            throw std::logic_error("GetAppDataFolder: Not implemented in the current platform.");
+            // TODO: Make the exception call below work here
+            // LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented,);
 #endif
         }
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 
         template <size_t divVersion = 1>
-        static LLUtils::Buffer CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, uint32_t rowPitch, const std::byte *buffer)
+        static LLUtils::Buffer CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, uint32_t rowPitch,
+                                         const std::byte* buffer)
         {
             if constexpr (divVersion == 5)
                 return CreateDIB<BITMAPV5HEADER>(width, height, bpp, rowPitch, buffer);
@@ -332,24 +334,27 @@ namespace LLUtils
         }
 
         template <typename DibHeaderType>
-        static LLUtils::Buffer CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, uint32_t rowPitch, const std::byte *buffer)
+        static LLUtils::Buffer CreateDIB(uint32_t width, uint32_t height, uint16_t bpp, uint32_t rowPitch,
+                                         const std::byte* buffer)
         {
             // Align target dib scanline to 32 bit
-            const DWORD dwBytesPerLine = LLUtils::Utility::Align(static_cast<DWORD>(bpp * width), static_cast<DWORD>((sizeof(DWORD) * CHAR_BIT))) / CHAR_BIT;
-            const DWORD paletteSize = 0; // not supproted.
-            const DWORD imageSize = static_cast<size_t>(dwBytesPerLine * height);
+            const DWORD dwBytesPerLine = LLUtils::Utility::Align(static_cast<DWORD>(bpp * width),
+                                                                 static_cast<DWORD>((sizeof(DWORD) * CHAR_BIT))) /
+                                         CHAR_BIT;
+            const DWORD paletteSize = 0;  // not supproted.
+            const size_t imageSize = static_cast<size_t>(dwBytesPerLine * height);
             const DWORD dibBufferSize = sizeof(DibHeaderType) + paletteSize + imageSize;
             LLUtils::Buffer dibBuffer(dibBufferSize);
 
-            DibHeaderType &bi = *reinterpret_cast<DibHeaderType *>(dibBuffer.data());
+            DibHeaderType& bi = *reinterpret_cast<DibHeaderType*>(dibBuffer.data());
             bi = {};
 
-            BITMAPINFOHEADER &v1 = reinterpret_cast<BITMAPINFOHEADER &>(bi);
+            BITMAPINFOHEADER& v1 = reinterpret_cast<BITMAPINFOHEADER&>(bi);
             v1.biSize = sizeof(DibHeaderType);
             v1.biWidth = static_cast<LONG>(width);
             v1.biHeight = static_cast<LONG>(height);
-            v1.biPlanes = 1;     // must be 1
-            v1.biBitCount = bpp; // from parameter
+            v1.biPlanes = 1;      // must be 1
+            v1.biBitCount = bpp;  // from parameter
             v1.biCompression = BI_RGB;
 
             size_t targetOffset = sizeof(DibHeaderType);
@@ -366,7 +371,9 @@ namespace LLUtils
 
                 for (uint32_t y = 0; y < height; y++)
                 {
-                    dibBuffer.Write(reinterpret_cast<const std::byte *>(reinterpret_cast<const uint8_t *>(buffer) + sourceOffset), targetOffset, bytesTowritePerLIne);
+                    dibBuffer.Write(reinterpret_cast<const std::byte*>(reinterpret_cast<const uint8_t*>(buffer) +
+                                                                       sourceOffset),
+                                    targetOffset, bytesTowritePerLIne);
 
                     targetOffset += dwBytesPerLine;
                     sourceOffset += rowPitch;
@@ -402,9 +409,9 @@ namespace LLUtils
             return GetModulePath(GetModuleHandle(nullptr));
 
 #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
-                native_char_type result[PATH_MAX]{};
-                ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-                return native_string_type(result, (count > 0) ? count : 0);
+            native_char_type result[PATH_MAX]{};
+            ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+            return native_string_type(result, (count > 0) ? count : 0);
 #endif
         }
 
@@ -413,16 +420,17 @@ namespace LLUtils
             using namespace std;
             return StringUtility::ToDefaultString(filesystem::path(GetExePath()).parent_path().wstring());
         }
-    
+
         static void nanosleep(uint64_t ns)
         {
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
             class NanoSleep
             {
-            public:
+              public:
+
                 void Wait(uint64_t ns)
                 {
-                    mLargeIntener.QuadPart = -static_cast<LONGLONG>(ns / 100); // std::max<int64_t>(100, ns) / 100;
+                    mLargeIntener.QuadPart = -static_cast<LONGLONG>(ns / 100);  // std::max<int64_t>(100, ns) / 100;
                     if (!SetWaitableTimer(mTimer, &mLargeIntener, 0, nullptr, nullptr, FALSE))
                         throw std::logic_error("Error, could not set timer");
 
@@ -433,7 +441,8 @@ namespace LLUtils
                     CloseHandle(mTimer);
                 }
 
-            private:
+              private:
+
                 HANDLE mTimer = CreateWaitableTimer(nullptr, TRUE, nullptr);
                 LARGE_INTEGER mLargeIntener{};
             };
@@ -441,47 +450,48 @@ namespace LLUtils
             static thread_local NanoSleep timer;
             timer.Wait(ns);
 #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
-            timespec req {};
-            timespec rem {};
+            timespec req{};
+            timespec rem{};
 
             if (ns >= 1'000'000'000)
             {
                 req.tv_nsec = ns % 1'000'000'000;
-                req.tv_sec = (ns -  req.tv_nsec) /  1'000'000'000;
+                req.tv_sec = (ns - req.tv_nsec) / 1'000'000'000;
             }
             else
             {
                 req.tv_nsec = ns;
             }
 
-            ::nanosleep(&req,&rem);
+            ::nanosleep(&req, &rem);
 #endif
         }
-    
-    
 
         // Returns the last Win32 error, in string format. Returns an empty string if there is no error.
         template <class CHAR_TYPE = wchar_t, typename ustring = std::basic_string<CHAR_TYPE>>
         static ustring GetLastErrorAsString()
         {
-
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
             // Get the error message, if any.
             DWORD errorMessageID = ::GetLastError();
             if (errorMessageID == 0)
-                return ustring(); // No error message has been recorded
+                return ustring();  // No error message has been recorded
 
-            CHAR_TYPE *messageBuffer = nullptr;
+            CHAR_TYPE* messageBuffer = nullptr;
             size_t size = 0;
             if (typeid(CHAR_TYPE) == typeid(wchar_t))
             {
-                size = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                      nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<wchar_t *>(&messageBuffer), 0, nullptr);
+                size = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                                          FORMAT_MESSAGE_IGNORE_INSERTS,
+                                      nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                      reinterpret_cast<wchar_t*>(&messageBuffer), 0, nullptr);
             }
             else
             {
-                size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                      nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<char *>(&messageBuffer), 0, nullptr);
+                size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                                          FORMAT_MESSAGE_IGNORE_INSERTS,
+                                      nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                      reinterpret_cast<char*>(&messageBuffer), 0, nullptr);
             }
 
             ustring message(messageBuffer, size);
@@ -491,18 +501,20 @@ namespace LLUtils
 
             return message;
 #else
-                return ustring();
+            return ustring();
 #endif
         }
 
-    struct CoresInfo
+        struct CoresInfo
         {
             uint16_t physicalCores = 0;
             uint16_t logicalCores = 0;
         };
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
-    private:
+
+      private:
+
         static DWORD CountSetBits(ULONG_PTR bitMask)
         {
             DWORD LSHIFT = sizeof(ULONG_PTR) * 8 - 1;
@@ -515,9 +527,9 @@ namespace LLUtils
             }
             return bitSetCount;
         }
-    
 
-    public:
+      public:
+
         static CoresInfo GetCPUCoresInfo()
         {
             CoresInfo result;
@@ -528,11 +540,14 @@ namespace LLUtils
                 {
                     size_t pos = 0;
                     auto buffer = std::make_unique<char[]>(len);
-                    if (GetLogicalProcessorInformationEx(RelationAll, reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer.get()), &len))
+                    if (GetLogicalProcessorInformationEx(
+                            RelationAll, reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer.get()),
+                            &len))
                     {
                         while (pos < len)
                         {
-                            PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX pi = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(&buffer[pos]);
+                            PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX pi =
+                                reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(&buffer[pos]);
                             if (pi->Relationship == RelationProcessorCore)
                             {
                                 cores++;
@@ -553,17 +568,15 @@ namespace LLUtils
             return result;
         }
 
-#elif  LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
-   static CoresInfo GetCPUCoresInfo()
-   {
-    auto numberOfCores = sh("lscpu | grep -oP 'Core\\(s\\) per socket:\\s*\\K.+'");
-    return {static_cast<uint16_t>(std::stoi(numberOfCores)), static_cast<uint16_t>(get_nprocs())};
-   }
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+        static CoresInfo GetCPUCoresInfo()
+        {
+            auto numberOfCores = sh("lscpu | grep -oP 'Core\\(s\\) per socket:\\s*\\K.+'");
+            return {static_cast<uint16_t>(std::stoi(numberOfCores)), static_cast<uint16_t>(get_nprocs())};
+        }
 #endif
-
-
     };
-}
+}  // namespace LLUtils
 
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 #pragma pop_macro("max")

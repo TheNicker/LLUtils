@@ -34,10 +34,11 @@ namespace LLUtils
         BottomRight
     };
 
-    template <class T>  
+    template <class T>
     class Rect
     {
-    public:
+      public:
+
         using Point_Type = Point<T>;
         Rect() = default;
 
@@ -60,12 +61,11 @@ namespace LLUtils
             T y0 = (std::max)(p0.y, rect.p0.y);
             T y1 = (std::min)(p1.y, rect.p1.y);
 
-            return{ {x0,y0},{x1,y1}};
-            
+            return {{x0, y0}, {x1, y1}};
         }
         Rect Infalte(T x, T y)
         {
-            //TODO: solve specific case for integers when inflating using odd numbers.
+            // TODO: solve specific case for integers when inflating using odd numbers.
             Rect infalted = *this;
             infalted.p0.x -= x / 2;
             infalted.p0.y -= y / 2;
@@ -80,52 +80,60 @@ namespace LLUtils
         }
         bool IsInside(const Rect& rect) const
         {
+            // clang-format off
             return
                 p0.x >= rect.p0.x
                 && p1.x <= rect.p1.x
                 && p0.y >= rect.p0.y
                 && p1.y <= rect.p1.y;
-
+            // clang-format on
         }
 
         bool IsInside(const Point_Type& point) const
         {
-            return
-                point.x >= p0.x && point.x <= p1.x &&
-                point.y >= p0.y && point.y <= p1.y;
+            return point.x >= p0.x && point.x <= p1.x && point.y >= p0.y && point.y <= p1.y;
         }
 
-        
         Rect Round() const
         {
-            return { p0.Round() , p1.Round() };
+            return {p0.Round(), p1.Round()};
         }
 
-        Rect& operator +=(Point_Type translation)
+        Rect& operator+=(Point_Type translation)
         {
             p0 += translation;
             p1 += translation;
             return *this;
         }
 
-        T GetWidth() const { return p1.x - p0.x; }
-        T GetHeight() const { return p1.y - p0.y; }
-        bool IsEmpty() const { return GetWidth() == 0 || GetHeight() == 0; }
+        T GetWidth() const
+        {
+            return p1.x - p0.x;
+        }
+        T GetHeight() const
+        {
+            return p1.y - p0.y;
+        }
+        bool IsEmpty() const
+        {
+            return GetWidth() == 0 || GetHeight() == 0;
+        }
 
         Point_Type GetCorner(const Corner corner) const
         {
             switch (corner)
             {
-            case Corner::TopLeft:
-                return p0;
-            case Corner::BottomRight:
-                return p1;
-            case Corner::BottomLeft:
-                return Point_Type(p0.x, p1.y);
-            case Corner::TopRight:
-                return Point_Type(p1.x, p0.y);
-            default:
-                LL_EXCEPTION_UNEXPECTED_VALUE;
+                case Corner::TopLeft:
+                    return p0;
+                case Corner::BottomRight:
+                    return p1;
+                case Corner::BottomLeft:
+                    return Point_Type(p0.x, p1.y);
+                case Corner::TopRight:
+                    return Point_Type(p1.x, p0.y);
+                case Corner::None:
+                default:
+                    LL_EXCEPTION_UNEXPECTED_VALUE;
             }
         }
 
@@ -134,7 +142,7 @@ namespace LLUtils
         explicit operator Rect<BASE_TYPE>() const
         {
             using BASE_POINT_TYPE = Point<BASE_TYPE>;
-            return  Rect<BASE_TYPE>(static_cast<BASE_POINT_TYPE>(p0), static_cast<BASE_POINT_TYPE>(p1));
+            return Rect<BASE_TYPE>(static_cast<BASE_POINT_TYPE>(p0), static_cast<BASE_POINT_TYPE>(p1));
         }
 
         Point_Type& LeftTop()
@@ -147,21 +155,20 @@ namespace LLUtils
             return p1;
         }
 
-
-    private:
+      private:
 
         Point_Type p0;
         Point_Type p1;
-        
-    public:
+
+      public:
+
         static const Rect Zero;
     };
 
     template <class T>
-    const Rect<T>  Rect<T>::Zero = Rect<T>(Point<T>::Zero , Point<T>::Zero);
-
+    const Rect<T> Rect<T>::Zero = Rect<T>(Point<T>::Zero, Point<T>::Zero);
 
     using RectI32 = Rect<int32_t>;
     using RectF32 = Rect<float>;
     using RectF64 = Rect<double>;
-}
+}  // namespace LLUtils
