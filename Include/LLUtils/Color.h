@@ -36,10 +36,11 @@ SOFTWARE.
 namespace LLUtils
 {
     /// <summary>
-    /// Color class stores arbitrary width, 4 colors channels in the order R, G ,B ,A where R is the lowest memory address and
+    /// Color class stores arbitrary width, 4 colors channels in the order R, G ,B ,A where R is the lowest memory
+    /// address and
     ///  A is the highest.
     /// </summary>
-#pragma pack(push,1)
+#pragma pack(push, 1)
     template <typename channelType, size_t numchannels = 4>
     struct ColorBase
     {
@@ -65,21 +66,11 @@ namespace LLUtils
 
         constexpr ColorBase() = default;
 
-        bool operator ==(const ColorBase& rhs) const
-        {
-            return channels == rhs.channels;
-        }
+        bool operator==(const ColorBase& rhs) const { return channels == rhs.channels; }
 
-        bool operator !=(const ColorBase& rhs) const
-        {
-            return channels != rhs.channels;
-        }
+        bool operator!=(const ColorBase& rhs) const { return channels != rhs.channels; }
 
-
-        constexpr ColorBase(ColorData _channels)
-        {
-            channels = _channels;
-        }
+        constexpr ColorBase(ColorData _channels) { channels = _channels; }
 
         /// <summary>
         /// Initialize color from a 32 bit number in the form RRGGBBAA.
@@ -89,34 +80,30 @@ namespace LLUtils
 
         ColorBase(uint32_t color)
         {
-            // make sure Color class stores color values in 8 bit X 4 channels to match the 32 bit 
+            // make sure Color class stores color values in 8 bit X 4 channels to match the 32 bit
             // color parameter
             static_assert(sizeof(color) == sizeof(channels), "default color size is not 32 bit");
             if constexpr (std::endian::native == std::endian::little)
             {
-            #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
                 auto reversedBytes = _byteswap_ulong(color);
-            #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
                 auto reversedBytes = bswap_32(color);
-            #endif
-
-                channels = *reinterpret_cast<ColorData*>(&reversedBytes);
+#endif
+                channels = std::bit_cast<ColorData>(reversedBytes);
             }
             else
             {
-                channels = *reinterpret_cast<ColorData*>(&color);
+                channels = std::bit_cast<ColorData>(color);
             }
         }
 
-
-        //Floating point constructor
+        // Floating point constructor
         template <typename ParamType, typename std::enable_if_t<std::is_floating_point_v<ParamType>, int> = 0>
         constexpr ColorBase(ParamType r, ParamType g, ParamType b, ParamType a = 1.0)
         {
-
             if constexpr (std::is_integral<color_channel_type>())
             {
-
                 R() = static_cast<color_channel_type>(std::round(r * static_cast<ParamType>(max_channel_value)));
                 G() = static_cast<color_channel_type>(std::round(g * static_cast<ParamType>(max_channel_value)));
                 B() = static_cast<color_channel_type>(std::round(b * static_cast<ParamType>(max_channel_value)));
@@ -131,9 +118,9 @@ namespace LLUtils
             }
         }
 
-
-        //Intergal constructor
-        template <typename ParamType, ParamType max_value = std::numeric_limits<ParamType>::max(), typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
+        // Intergal constructor
+        template <typename ParamType, ParamType max_value = std::numeric_limits<ParamType>::max(),
+                  typename std::enable_if_t<std::is_integral_v<ParamType>, int> = 0>
         constexpr ColorBase(ParamType r, ParamType g, ParamType b, ParamType a = max_value)
         {
             if constexpr (std::is_integral<color_channel_type>())
@@ -175,14 +162,13 @@ namespace LLUtils
                 b = static_cast<color_channel_type>(255.0 * HueToRGB(v1, v2, hueNormalized - (1.0 / 3.0)));
             }
 
-            return { r,g,b };
+            return {r, g, b};
         }
 
         ColorBase Blend(const ColorBase& source)
         {
-
             const auto dst = static_cast<ColorBase<double>>(*this);
-            const auto src = static_cast<ColorBase<double>>(source);  
+            const auto src = static_cast<ColorBase<double>>(source);
 
             const double invSourceAlpha = 1.0 - src.A();
 
@@ -191,7 +177,6 @@ namespace LLUtils
             double g = src.G() * src.A() + invSourceAlpha * dst.G() * dst.A();
             double b = src.B() * src.A() + invSourceAlpha * dst.B() * dst.A();
 
-
             if (a != 0.0)
             {
                 r /= a;
@@ -199,7 +184,7 @@ namespace LLUtils
                 b /= a;
             }
 
-            return { r,g,b,a };
+            return {r, g, b, a};
 
             /*blended.A = static_cast<Channel>((source.A  + A * invSourceAlpha / 0xFF) );
             blended.R = static_cast<Channel>(((( (int)source.A * source.R) + (A * R) * invSourceAlpha)) / 0xFF);
@@ -218,27 +203,25 @@ namespace LLUtils
         template <typename new_type>
         explicit operator ColorBase<new_type>() const
         {
-            return { R(),G(),B(),A() };
+            return {R(), G(), B(), A()};
         }
 
-
-        ColorBase MultiplyAlpha() const 
+        ColorBase MultiplyAlpha() const
         {
-            static_assert(std::is_floating_point_v<color_channel_type> == true, "Color underlying type needs to be a floating point");
-            return { R() * A() , G() * A(), B() * A() , A() };
+            static_assert(std::is_floating_point_v<color_channel_type> == true,
+                          "Color underlying type needs to be a floating point");
+            return {R() * A(), G() * A(), B() * A(), A()};
         }
-
-
 
         ColorBase DivideAlpha() const
         {
-            static_assert(std::is_floating_point_v<color_channel_type> == true, "Color underlying type needs to be a floating point");
+            static_assert(std::is_floating_point_v<color_channel_type> == true,
+                          "Color underlying type needs to be a floating point");
             if (A() != 0)
-                return { R() / A() , G() / A(), B() / A() , A() };
-            else 
-                return  { R() , G() , B()  , A() };
+                return {R() / A(), G() / A(), B() / A(), A()};
+            else
+                return {R(), G(), B(), A()};
         }
-
 
         /// <summary>
         /// Blend source color into this color for a multiplied alpha color space
@@ -246,31 +229,27 @@ namespace LLUtils
         /// <typeparam name="enable_if_t"></typeparam>
         /// <param name="source"></param>
         /// <returns></returns>
-        //template < std::enable_if_t<std::is_floating_point_v<color_channel_type>, int> = 0>
+        // template < std::enable_if_t<std::is_floating_point_v<color_channel_type>, int> = 0>
         ColorBase BlendPreMultiplied(const ColorBase& source) const
         {
-            static_assert(std::is_floating_point_v<color_channel_type> == true, "Color underlying type needs to be a floating point");
+            static_assert(std::is_floating_point_v<color_channel_type> == true,
+                          "Color underlying type needs to be a floating point");
             const color_channel_type invSourceAlpha = static_cast<color_channel_type>(1.0) - source.A();
-            return
-            { source.R() + R() * invSourceAlpha
-                ,  source.G() + G() * invSourceAlpha
-                ,  source.B() + B() * invSourceAlpha
-                ,  source.A() + A() * invSourceAlpha
+            return {source.R() + R() * invSourceAlpha, source.G() + G() * invSourceAlpha,
+                    source.B() + B() * invSourceAlpha, source.A() + A() * invSourceAlpha
 
             };
         }
 
-
         static ColorBase FromString(const std::string& str)
         {
-            static const ColorBase DefaultParseFailureColor = ColorBase(max_channel_value, max_channel_value, max_channel_value, max_channel_value);
+            static const ColorBase DefaultParseFailureColor = ColorBase(max_channel_value, max_channel_value,
+                                                                        max_channel_value, max_channel_value);
             constexpr color_channel_type DefaultAlphaValue = max_channel_value;
             using namespace std;
 
             auto HexPairToByte = [](const std::array<char, 3>& hexByte) -> color_channel_type
-            {
-                return static_cast<color_channel_type>(std::strtoul(hexByte.data(), nullptr, 16));
-            };
+            { return static_cast<color_channel_type>(std::strtoul(hexByte.data(), nullptr, 16)); };
             ColorData colorBytes{};
             std::string trimmed = str;
             StringUtility::trim(trimmed, "\t\n\r ");
@@ -286,7 +265,6 @@ namespace LLUtils
             else if (view.length() > 1 && view.substr(0, 2) == "0x")
                 hexIndex = 2;
 
-
             if (hexIndex != -1 && view.length() > static_cast<size_t>(hexIndex))
             {
                 constexpr size_t CharPerComponent = 2;
@@ -300,28 +278,29 @@ namespace LLUtils
                 }
 
                 const bool isAlphaChannel = numComponents == 4;
-                size_t componentsToProcessInLoop = isAlphaChannel ? numComponents - 1u : numComponents - (lastSingleDigitComponent == true ? 1u : 0u);
+                size_t componentsToProcessInLoop = isAlphaChannel
+                                                       ? numComponents - 1u
+                                                       : numComponents - (lastSingleDigitComponent == true ? 1u : 0u);
                 size_t comp = 0;
 
-                //Assign two bytes componenets
+                // Assign two bytes componenets
                 for (; comp < componentsToProcessInLoop; comp++)
-                    colorBytes.at(comp) = HexPairToByte({ { view.at(comp * 2), view.at(comp * 2 + 1) ,0 } });
+                    colorBytes.at(comp) = HexPairToByte({{view.at(comp * 2), view.at(comp * 2 + 1), 0}});
 
-                //Assign last single component, alpha or color.
+                // Assign last single component, alpha or color.
                 if (lastSingleDigitComponent == true)
-                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({ { '0', view.at(comp * 2) ,0 } });
+                    colorBytes.at(isAlphaChannel ? 3 : 2 - comp) = HexPairToByte({{'0', view.at(comp * 2), 0}});
 
-                //Assign default alpha if no alpha provided
+                // Assign default alpha if no alpha provided
                 if (isAlphaChannel == false)
                     colorBytes.at(3) = DefaultAlphaValue;
-                else if (lastSingleDigitComponent == false) // if two components alpha.
-                    colorBytes.at(3) = HexPairToByte({ { view.at(comp * 2), view.at(comp * 2 + 1) ,0 } });
+                else if (lastSingleDigitComponent == false)  // if two components alpha.
+                    colorBytes.at(3) = HexPairToByte({{view.at(comp * 2), view.at(comp * 2 + 1), 0}});
 
-
-                return { colorBytes };
+                return {colorBytes};
             }
 
-            //If couldn't parse color in the form of 0xXXXXXX or #XXXXXX, try r,g,b,[a]
+            // If couldn't parse color in the form of 0xXXXXXX or #XXXXXX, try r,g,b,[a]
             auto splitValues = StringUtility::split(str, ',');
             bool error = false;
 
@@ -340,17 +319,19 @@ namespace LLUtils
 
             if (!error)
             {
-                if (splitValues.size() < 4) // no alpha channel supplied, set alpha channel to 255
+                if (splitValues.size() < 4)  // no alpha channel supplied, set alpha channel to 255
                     colorBytes.at(3) = 255;
 
-                return { colorBytes };
+                return {colorBytes};
             }
 
             return DefaultParseFailureColor;
         }
 
-    private:
-        static double HueToRGB(double v1, double v2, double vH) {
+      private:
+
+        static double HueToRGB(double v1, double v2, double vH)
+        {
             if (vH < 0)
                 vH += 1;
 
@@ -370,16 +351,16 @@ namespace LLUtils
         }
     };
 #pragma pack(pop)
-    // 8 bit color per channel 
+    // 8 bit color per channel
     using Color = ColorBase<uint8_t>;
-    
-    //16 bit unsigned integer color channel
+
+    // 16 bit unsigned integer color channel
     using ColorI16 = ColorBase<uint16_t>;
-    
-    //32 bit floating point color channel
+
+    // 32 bit floating point color channel
     using ColorF32 = ColorBase<float>;
-    
-    //64 bit floating point color channel
+
+    // 64 bit floating point color channel
     using ColorF64 = ColorBase<double>;
 
-}
+}  // namespace LLUtils
