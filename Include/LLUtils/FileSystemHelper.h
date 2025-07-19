@@ -28,10 +28,11 @@ namespace LLUtils
 {
     class FileSystemHelper
     {
-    public:
-        static ListWString FindFiles(ListWString& filesList, std::filesystem::path workingDir, native_string_type fileTypes, bool recursive, bool caseSensitive)
+      public:
+
+        static ListWString FindFiles(ListWString& filesList, std::filesystem::path workingDir,
+                                     native_string_type fileTypes, bool recursive, bool caseSensitive)
         {
-        
             using namespace std::filesystem;
             ListNString extensions = StringUtility::split(fileTypes, LLUTILS_TEXT(';'));
             std::set<native_string_type> extensionSet;
@@ -42,13 +43,13 @@ namespace LLUtils
             auto AddFileIfExtensionsMatches = [&](const path& filePath)
             {
                 native_string_type extNoDot = filePath.extension().string<native_char_type>();
-                
+
                 if (extNoDot.empty() == false)
                     extNoDot = extNoDot.substr(1);
 
-                if (extensionSet.find(caseSensitive == true ? extNoDot : StringUtility::ToUpper(extNoDot)) != extensionSet.end())
+                if (extensionSet.find(caseSensitive == true ? extNoDot : StringUtility::ToUpper(extNoDot)) !=
+                    extensionSet.end())
                     filesList.push_back(filePath.wstring());
-
             };
 
             if (recursive == true)
@@ -61,14 +62,14 @@ namespace LLUtils
             return filesList;
         }
 
-        template <class string_type = native_string_type, typename char_type = typename string_type::value_type >
-        static string_type ResolveFullPath(string_type fileName)
+        template <class string_type = native_string_type, typename char_type = typename string_type::value_type>
+        static string_type ResolveFullPath(const string_type& fileName)
         {
             using namespace std::filesystem;
             path p(fileName);
             if (p.empty() == false && p.is_absolute() == false)
-               p = current_path() / fileName;
-            
+                p = current_path() / fileName;
+
             return p.string<char_type>();
         }
 
@@ -80,6 +81,5 @@ namespace LLUtils
             directoryName.remove_filename();
             return filesystem::exists(directoryName) || filesystem::create_directories(directoryName);
         }
-
     };
-}
+}  // namespace LLUtils
