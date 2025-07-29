@@ -25,6 +25,7 @@ SOFTWARE.
 #include <memory>
 #include <stdexcept>
 #include <cstring>
+#include <span>
 #include <LLUtils/Platform.h>
 #include <LLUtils/Utility.h>
 #include <LLUtils/Warnings.h>
@@ -232,6 +233,42 @@ namespace LLUtils
             return fSize;
         }
 
+
+
+
+       template<typename T>
+        operator std::span<const T>() const
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
+
+            if (reinterpret_cast<std::uintptr_t>(data()) % alignof(T) != 0) 
+                throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
+
+            if (reinterpret_cast<std::uintptr_t>(data()) % sizeof(T) != 0) 
+                throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
+
+            LLUTILS_DISABLE_WARNING_PUSH
+            LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
+            return std::span<const T>(reinterpret_cast<const T*>(data()), size() / sizeof(T));
+            LLUTILS_DISABLE_WARNING_POP
+        }
+
+        template<typename T>
+        operator std::span<T>() 
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
+
+            if (reinterpret_cast<std::uintptr_t>(data()) % alignof(T) != 0) 
+                throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
+
+            if (reinterpret_cast<std::uintptr_t>(data()) % sizeof(T) != 0) 
+                throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
+
+            LLUTILS_DISABLE_WARNING_PUSH
+            LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
+            return std::span<T>(reinterpret_cast<T*>(data()), size() / sizeof(T));
+            LLUTILS_DISABLE_WARNING_POP
+        }
 
         // buffer must have been allocated with the corresponding Allocator.
         void TransferOwnership(size_t size, std::byte*& data)
