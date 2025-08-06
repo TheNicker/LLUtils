@@ -39,7 +39,7 @@ namespace LLUtils
     #endif
 #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
         using native_char_type = char; // UTF8 in linux
-        #define LLUTILS_TEXT(T) T
+        #define LLUTILS_TEXT(T) T //UTF 8 in linux
 #endif
 
     using native_string_type = std::basic_string<native_char_type>;

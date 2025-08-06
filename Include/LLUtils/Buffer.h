@@ -237,14 +237,14 @@ namespace LLUtils
 
 
        template<typename T>
-        operator std::span<const T>() const
+        explicit operator std::span<const T>() const
         {
             static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
 
             if (reinterpret_cast<std::uintptr_t>(data()) % alignof(T) != 0) 
                 throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
 
-            if (reinterpret_cast<std::uintptr_t>(data()) % sizeof(T) != 0) 
+            if (size() % sizeof(T) != 0) 
                 throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
 
             LLUTILS_DISABLE_WARNING_PUSH
@@ -254,15 +254,15 @@ namespace LLUtils
         }
 
         template<typename T>
-        operator std::span<T>() 
+        explicit operator std::span<T>() 
         {
             static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
 
             if (reinterpret_cast<std::uintptr_t>(data()) % alignof(T) != 0) 
                 throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
 
-            if (reinterpret_cast<std::uintptr_t>(data()) % sizeof(T) != 0) 
-                throw std::runtime_error("RawBuffer: data is not properly aligned for type T");
+            if (size() % sizeof(T) != 0) 
+                throw std::runtime_error("RawBuffer: buffer size is not a multiple of sizeof(T)");
 
             LLUTILS_DISABLE_WARNING_PUSH
             LLUTILS_DISABLE_WARNING_UNSAFE_BUFFER_USAGE
