@@ -29,6 +29,7 @@ SOFTWARE.
 #include <Windows.h> 
 #endif
 
+#include <cstdint>
 
 
 namespace LLUtils
