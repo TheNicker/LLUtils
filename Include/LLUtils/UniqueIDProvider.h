@@ -21,31 +21,32 @@ SOFTWARE.
 */
 
 #pragma once
-#include "Exception.h"
 #include <cassert>
-#include <vector>
 #include <set>
+#include <stdexcept>
+#include <type_traits>
+#include <vector>
 namespace LLUtils
 {
     template <typename T, typename Container = std::set<T>>
     class UniqueIdProvider
     {
-	public:
-		using underlying_type = T;
-    private:
-        //Note: Do not change the order of the members deceleration
-        // if its inevitable keep 'fFreeIds' prior to 'fFreeIdsEnd'
+      public:
+
+        using underlying_type = T;
+
+      private:
+
+        // Note: Do not change the order of the members deceleration
+        //  if its inevitable keep 'fFreeIds' prior to 'fFreeIdsEnd'
         Container fFreeIds;
         typename Container::const_iterator fFreeIdsEnd;
         T fStartID;
         T fNextId;
 
+      public:
 
-    public:
-        UniqueIdProvider(const T startID = 0) : fFreeIdsEnd(fFreeIds.end()) , fStartID(startID) , fNextId(startID)
-        {
-
-        }
+        UniqueIdProvider(const T startID = 0) : fFreeIdsEnd(fFreeIds.end()), fStartID(startID), fNextId(startID) {}
 
         void Reset()
         {
@@ -53,18 +54,9 @@ namespace LLUtils
             fFreeIds.clear();
         }
 
-        underlying_type GetNextID() const
-        {
-            return fNextId;
-        }
+        underlying_type GetNextID() const { return fNextId; }
 
-
-        underlying_type GetStartID() const
-        {
-            return fStartID;
-        }
-
-        
+        underlying_type GetStartID() const { return fStartID; }
 
         T Acquire()
         {
@@ -76,14 +68,14 @@ namespace LLUtils
             else
             {
                 typename Container::iterator it = fFreeIds.begin();
-                result = *it;
+                result                          = *it;
                 fFreeIds.erase(it);
             }
             return result;
         }
 
         static constexpr bool IsVector = std::is_same_v<Container, typename std::vector<T>>;
-        
+
         /*
         template <typename = typename std::enable_if_t<IsVector>>
         void Release(const T id)
@@ -97,18 +89,17 @@ namespace LLUtils
         template <typename = typename std::enable_if_t<!IsVector>>
         void Release(const T id)
         {
-
-        #ifdef DEBUG
+#ifdef DEBUG
             if (!(id < fNextId && id >= fStartID))
-                LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "Trying to release an id that has never been acquired");
-        #endif
+                throw std::logic_error("Trying to release an id that has never been acquired");
+#endif
 
             auto result = fFreeIds.insert(id);
 
             if (result.second == false)
-                LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "id already released");
+                throw std::logic_error("id already released");
         }
-        
+
         void Normalize()
         {
             typename Container::const_iterator it;
@@ -119,4 +110,4 @@ namespace LLUtils
             }
         }
     };
-}
+}  // namespace LLUtils
