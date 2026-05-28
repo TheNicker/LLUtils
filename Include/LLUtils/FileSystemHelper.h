@@ -30,7 +30,7 @@ namespace LLUtils
     {
       public:
 
-        static ListWString FindFiles(ListWString& filesList, std::filesystem::path workingDir,
+        static ListNString FindFiles(ListNString& filesList, std::filesystem::path workingDir,
                                      native_string_type fileTypes, bool recursive, bool caseSensitive)
         {
             using namespace std::filesystem;
@@ -49,7 +49,7 @@ namespace LLUtils
 
                 if (extensionSet.find(caseSensitive == true ? extNoDot : StringUtility::ToUpper(extNoDot)) !=
                     extensionSet.end())
-                    filesList.push_back(filePath.wstring());
+                    filesList.push_back(filePath.string<native_char_type>());
             };
 
             if (recursive == true)

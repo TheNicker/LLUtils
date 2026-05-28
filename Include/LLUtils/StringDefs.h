@@ -44,6 +44,7 @@ namespace LLUtils
 
     using native_string_type = std::basic_string<native_char_type>;
     using native_stringstream = std::basic_stringstream<native_char_type>;
+    using native_string_view = std::basic_string_view<native_char_type>;
 
     using default_char_type = native_char_type;
     using default_string_type = std::basic_string<default_char_type>;
