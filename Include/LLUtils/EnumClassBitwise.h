@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019 Lior Lahav
+Copyright (c) 2019-2026 Lior Lahav
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,115 +23,102 @@ SOFTWARE.
 #pragma once
 #ifndef _ENUM_CLASS_BITWISE_H_
 #define _ENUM_CLASS_BITWISE_H_
+
+#include <concepts>
 #include <type_traits>
-
-#if 1
-#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_EMPTY_TOKEN
-
-#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IMPL(Enum,PREFIX) \
-\
-    PREFIX constexpr inline Enum operator~ (Enum val)\
-    {\
-        val = static_cast<Enum>(~static_cast<std::underlying_type_t<Enum>>(val));\
-        return val;\
-    }\
-		\
-    PREFIX constexpr inline Enum operator& (Enum lhs, Enum rhs)\
-    {\
-        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));\
-    }\
-	\
-    PREFIX constexpr inline Enum operator<< (Enum lhs, std::underlying_type_t<Enum> rhs)\
-    {\
-        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) << rhs);\
-    }\
-	\
-    PREFIX constexpr inline Enum operator>> (Enum lhs, std::underlying_type_t<Enum> rhs)\
-    {\
-        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) >> rhs);\
-    }\
-	\
-    PREFIX constexpr inline Enum operator^ (Enum lhs, Enum rhs)\
-    {\
-        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) ^ static_cast<std::underlying_type_t<Enum>>(rhs));\
-    }\
-	\
-    PREFIX constexpr inline Enum& operator^= (Enum& lhs, Enum rhs)\
-    {\
-        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) ^ static_cast<std::underlying_type_t<Enum>>(rhs));\
-        return lhs;\
-    }\
-    PREFIX constexpr inline Enum operator&= (Enum& lhs, Enum rhs)\
-    {\
-        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));\
-        return lhs;\
-    }\
-	\
-    PREFIX constexpr inline Enum operator| (Enum lhs, Enum rhs)\
-    {\
-        return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));\
-    }\
-	\
-    PREFIX constexpr inline Enum& operator|= (Enum& lhs, Enum rhs)\
-    {\
-        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));\
-        return lhs;\
-    }\
-    PREFIX constexpr inline Enum& operator<<= (Enum& lhs, std::underlying_type_t<Enum> rhs)\
-    {\
-        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) << rhs);\
-        return lhs;\
-    }\
-    PREFIX constexpr inline Enum& operator>>= (Enum& lhs, std::underlying_type_t<Enum> rhs)\
-    {\
-        lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) >> rhs);\
-        return lhs;\
-    }\
-
-#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(ENUM) LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IMPL(ENUM,LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_EMPTY_TOKEN )
-#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS(ENUM) LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IMPL(ENUM,friend )
+#include <utility>
 
 
-#else
-//Global enum bit flags 
-//unary ~operator
-template <typename Enum, typename std::enable_if_t<std::is_enum<Enum>::value, int> = 0>
-constexpr inline Enum & operator~ (Enum & val)
+namespace LLUtils::detail
 {
-	val = static_cast<Enum>(~static_cast<std::underlying_type_t<Enum>>(val));
-	return val;
+    template<typename Enum>
+    concept BitwiseEnum =
+        std::is_enum_v<Enum> &&
+        requires(Enum value)
+        {
+            { enable_enum_class_bitwise(value) } -> std::same_as<std::true_type>;
+        };
 }
 
-// & operator
-template <typename Enum, typename std::enable_if_t<std::is_enum<Enum>::value, int> = 0>
-constexpr inline Enum operator& (Enum lhs, Enum rhs)
+// Use LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS to opt-in an enum class to bitwise operators. 
+ #define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(Enum) \
+     inline consteval std::true_type enable_enum_class_bitwise(Enum) noexcept { return {}; }
+
+// Use LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS to opt-in an enum class defined inside a class to bitwise operators.
+// This second macro is for convinience and readability, as the first macro can be used for enums defined inside a class as well, 
+// but it requires specifying the class name as part of the enum name and defining the operators outside of the class, which can be less readable.
+
+#define LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS(Enum) \
+    friend inline consteval std::true_type enable_enum_class_bitwise(Enum) noexcept { return {}; }
+
+template<LLUtils::detail::BitwiseEnum Enum>
+[[nodiscard]] constexpr inline Enum operator~(Enum value) noexcept
 {
-	return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));
+    return static_cast<Enum>(~std::to_underlying(value));
 }
 
-// &= operator
-template <typename Enum, typename std::enable_if_t<std::is_enum<Enum>::value, int> = 0>
-constexpr inline Enum operator&= (Enum & lhs, Enum rhs)
+template<LLUtils::detail::BitwiseEnum Enum>
+[[nodiscard]] constexpr inline Enum operator&(Enum lhs, Enum rhs) noexcept
 {
-	lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) & static_cast<std::underlying_type_t<Enum>>(rhs));
-	return lhs;
+    return static_cast<Enum>(std::to_underlying(lhs) & std::to_underlying(rhs));
 }
 
-//| operator
-
-template <typename Enum, typename std::enable_if_t<std::is_enum<Enum>::value, int> = 0 >
-constexpr inline Enum operator| (Enum lhs, Enum rhs)
+template<LLUtils::detail::BitwiseEnum Enum>
+[[nodiscard]] constexpr inline Enum operator<<(Enum lhs, std::underlying_type_t<Enum> rhs) noexcept
 {
-	return static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));
+    return static_cast<Enum>(std::to_underlying(lhs) << rhs);
 }
-//|= operator
 
-template <typename Enum, typename std::enable_if_t<std::is_enum<Enum>::value, int> = 0 >
-constexpr inline Enum & operator|= (Enum & lhs, Enum rhs)
+template<LLUtils::detail::BitwiseEnum Enum>
+[[nodiscard]] constexpr inline Enum operator>>(Enum lhs, std::underlying_type_t<Enum> rhs) noexcept
 {
-	lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));
-	return lhs;
+    return static_cast<Enum>(std::to_underlying(lhs) >> rhs);
 }
-#endif
 
+template<LLUtils::detail::BitwiseEnum Enum>
+[[nodiscard]] constexpr inline Enum operator^(Enum lhs, Enum rhs) noexcept
+{
+    return static_cast<Enum>(std::to_underlying(lhs) ^ std::to_underlying(rhs));
+}
+
+template<LLUtils::detail::BitwiseEnum Enum>
+constexpr inline Enum& operator^=(Enum& lhs, Enum rhs) noexcept
+{
+    lhs = lhs ^ rhs;
+    return lhs;
+}
+
+template<LLUtils::detail::BitwiseEnum Enum>
+constexpr inline Enum& operator&=(Enum& lhs, Enum rhs) noexcept
+{
+    lhs = lhs & rhs;
+    return lhs;
+}
+
+template<LLUtils::detail::BitwiseEnum Enum>
+[[nodiscard]] constexpr inline Enum operator|(Enum lhs, Enum rhs) noexcept
+{
+    return static_cast<Enum>(std::to_underlying(lhs) | std::to_underlying(rhs));
+}
+
+template<LLUtils::detail::BitwiseEnum Enum>
+constexpr inline Enum& operator|=(Enum& lhs, Enum rhs) noexcept
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+template<LLUtils::detail::BitwiseEnum Enum>
+constexpr inline Enum& operator<<=(Enum& lhs, std::underlying_type_t<Enum> rhs) noexcept
+{
+    lhs = lhs << rhs;
+    return lhs;
+}
+
+template<LLUtils::detail::BitwiseEnum Enum>
+constexpr inline Enum& operator>>=(Enum& lhs, std::underlying_type_t<Enum> rhs) noexcept
+{
+    lhs = lhs >> rhs;
+    return lhs;
+}
 #endif // _ENUM_CLASS_BITWISE_H_
