@@ -36,6 +36,7 @@ SOFTWARE.
 #include <algorithm>
 #include <time.h>
 #include <sys/sysinfo.h>
+#include <unistd.h>
 #endif
 
 #include "StringDefs.h"
