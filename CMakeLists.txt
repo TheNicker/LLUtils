@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 
 if(TARGET LLUtils)
     return()
@@ -11,6 +11,8 @@ file(GLOB_RECURSE llutils_header_files
 option(LLUTILS_ENABLE_DEBUG_SYMBOLS "Enable LLUtils stack-symbol support" ON)
 
 add_library(LLUtils INTERFACE)
+# Public headers use std::to_underlying and string resize_and_overwrite.
+target_compile_features(LLUtils INTERFACE cxx_std_23)
 add_library(LLUtils::LLUtils ALIAS LLUtils)
 
 target_include_directories(LLUtils

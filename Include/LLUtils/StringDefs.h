@@ -22,6 +22,7 @@ SOFTWARE.
 
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 #include <sstream>
 #include "Platform.h"
@@ -34,7 +35,7 @@ namespace LLUtils
         using native_char_type = wchar_t; // UTF 16 in Windows
         #define LLUTILS_TEXT(T) L##T
         #else
-            using native_char_type = char; // Ascii in Windows
+    using native_char_type = char;  // UTF-8; Windows A APIs require an explicit boundary conversion
         #define LLUTILS_TEXT(T) T
     #endif
 #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX

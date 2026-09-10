@@ -23,6 +23,7 @@ SOFTWARE.
 #pragma once
 
 #include <array>
+#include <memory>
 #include "Platform.h"
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 #include <Windows.h>
@@ -388,7 +389,7 @@ namespace LLUtils
             native_char_type ownPth[MAX_PATH];
             if (hModule != nullptr && GetModuleFileName(hModule, ownPth, (sizeof(ownPth) / sizeof(ownPth[0]))) > 0)
 
-                return StringUtility::ToDefaultString(native_string_type(ownPth));
+                return default_string_type(ownPth);
             else
                 return default_string_type();
         }
@@ -401,7 +402,7 @@ namespace LLUtils
         static default_string_type GetDllFolder()
         {
             using namespace std;
-            return StringUtility::ToDefaultString(filesystem::path(GetDllPath()).parent_path().wstring());
+            return StringUtility::ToDefaultString(filesystem::path(GetDllPath()).parent_path().native());
         }
 #endif
         static default_string_type GetExePath()
@@ -416,10 +417,12 @@ namespace LLUtils
 #endif
         }
 
+        // Keep filesystem operations in the native representation. A wide round trip
+        // adds work on Linux and can reject native filename bytes under the C locale.
         static default_string_type GetExeFolder()
         {
             using namespace std;
-            return StringUtility::ToDefaultString(filesystem::path(GetExePath()).parent_path().wstring());
+            return StringUtility::ToDefaultString(filesystem::path(GetExePath()).parent_path().native());
         }
 
         static void nanosleep(uint64_t ns)
@@ -478,27 +481,16 @@ namespace LLUtils
             if (errorMessageID == 0)
                 return ustring();  // No error message has been recorded
 
-            CHAR_TYPE* messageBuffer = nullptr;
-            size_t size = 0;
-            if (typeid(CHAR_TYPE) == typeid(wchar_t))
-            {
-                size = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                                          FORMAT_MESSAGE_IGNORE_INSERTS,
-                                      nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                                      reinterpret_cast<wchar_t*>(&messageBuffer), 0, nullptr);
-            }
-            else
-            {
-                size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                                          FORMAT_MESSAGE_IGNORE_INSERTS,
-                                      nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                                      reinterpret_cast<char*>(&messageBuffer), 0, nullptr);
-            }
-
-            ustring message(messageBuffer, size);
-
-            // Free the buffer.
-            LocalFree(messageBuffer);
+            wchar_t* messageBuffer = nullptr;
+            const DWORD size       = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                                                        FORMAT_MESSAGE_IGNORE_INSERTS,
+                                                    nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                                    reinterpret_cast<wchar_t*>(&messageBuffer), 0, nullptr);
+            const auto freeMessage = [](wchar_t* buffer) { LocalFree(buffer); };
+            const std::unique_ptr<wchar_t, decltype(freeMessage)> ownedMessage(messageBuffer, freeMessage);
+            const ustring message = size == 0
+                                        ? ustring{}
+                                        : StringUtility::ConvertString<ustring>(std::wstring_view(messageBuffer, size));
 
             return message;
 #else
