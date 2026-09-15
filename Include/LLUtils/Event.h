@@ -100,10 +100,18 @@ namespace LLUtils
         template <class... Args>
         void Raise(Args... args)
         {
+            RaiseWhile([] { return true; }, args...);
+        }
+
+        // Recheck a lifetime/state boundary between listeners, including after nested dispatch.
+        // Existing Raise() retains its unconditional propagation policy.
+        template <class Predicate, class... Args>
+        void RaiseWhile(Predicate&& continueDispatch, Args&&... args)
+        {
             const RaiseScope raiseScope(*this);
             const auto listenerCount = fListeners.size();
 
-            for (std::size_t index = 0; index < listenerCount; ++index)
+            for (std::size_t index = 0; index < listenerCount && continueDispatch(); ++index)
             {
                 auto& listener = fListeners[index];
                 if (listener.connected)
