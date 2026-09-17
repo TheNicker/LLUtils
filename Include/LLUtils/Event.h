@@ -69,6 +69,9 @@ namespace LLUtils
 
             ~Connection() { Disconnect(); }
 
+            // Reports whether this handle owns a registration.
+            [[nodiscard]] explicit operator bool() const noexcept { return fEvent != nullptr; }
+
             void Disconnect()
             {
                 if (fEvent != nullptr)
