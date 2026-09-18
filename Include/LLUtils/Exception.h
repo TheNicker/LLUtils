@@ -44,6 +44,21 @@ namespace LLUtils
 {
     class Exception : public std::exception
     {
+#if defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
+        // TODO: Remove the TextArgument workaround once the supported MSVC STL versions
+        // fix debug proxy allocation in noexcept string constructors:
+        // https://github.com/microsoft/STL/issues/1035
+        // With MSVC iterator debugging enabled, even a noexcept string move constructor allocates
+        // iterator bookkeeping. In the rare case that this allocation fails, std::terminate is called;
+        // an outer catch cannot intercept the failure. Borrow inputs and copy into final storage so
+        // allocation failures can propagate to the reporting boundary's catch instead. Copying still
+        // allocates; this makes failure catchable. Other builds retain efficient ownership transfers.
+
+        using TextArgument = const std::string&;
+#else
+        using TextArgument = std::string;
+#endif
+
       public:
 
         enum class ErrorCode
@@ -67,18 +82,29 @@ namespace LLUtils
             Error
         };
 
+        enum class ThreadRole
+        {
+            Unknown,
+            Main,
+            Worker
+        };
+
         // Text is UTF-8. A cause owns the original exception, including foreign dynamic types.
         struct EventArgs
         {
             ErrorCode errorCode{};
-            std::string description;
-            std::string systemErrorMessage;
-            PlatformUtility::StackTrace stackTrace;
-            std::string functionName;
+            // These empty constructors may throw, unlike MSVC Debug's allocating noexcept defaults.
+            std::string description{""};
+            std::string systemErrorMessage{""};
+            PlatformUtility::StackTrace stackTrace{0};
+            std::string functionName{""};
             Mode exceptionmode{};
             std::source_location source{};
             std::error_code systemError;
             std::exception_ptr cause;
+            // Origin is captured once; reporting or wrapping on another thread does not change it.
+            std::uint64_t threadId{};
+            ThreadRole threadRole{};
         };
 
         // Event supplies synchronized registration, snapshots, and subscription ownership.
@@ -134,7 +160,14 @@ namespace LLUtils
             sThrowErrorsInDebug.store(shouldThrow, std::memory_order_relaxed);
         }
 
-        Exception(ErrorCode errorCode, std::string function, std::string description, bool systemError,
+        // Call from the application main thread before diagnostics or workers start.
+        // Repeating on that thread is harmless; earlier snapshots retain Unknown classification.
+        static void RegisterMainThread() noexcept
+        {
+            sMainThreadId.store(PlatformUtility::GetCurrentThreadId(), std::memory_order_relaxed);
+        }
+
+        Exception(ErrorCode errorCode, TextArgument function, TextArgument description, bool systemError,
                   Mode exceptionMode, int callStackLevel = 2,
                   std::source_location source = std::source_location::current())
             : Exception(errorCode, std::move(function), std::move(description),
@@ -152,14 +185,14 @@ namespace LLUtils
         [[nodiscard]] const EventArgs& GetDetails() const noexcept { return *fDetails; }
         [[nodiscard]] const char* what() const noexcept override { return GetDetails().description.c_str(); }
 
-        [[nodiscard]] static Exception FromSystemError(std::error_code code, std::string description,
+        [[nodiscard]] static Exception FromSystemError(std::error_code code, TextArgument description,
                                                        std::source_location source = std::source_location::current())
         {
             return Exception(ErrorCode::SystemError, source.function_name(), std::move(description), code,
                              Mode::Exception, 2, source, {});
         }
 
-        [[noreturn]] static void Rethrow(ErrorCode code, std::string description,
+        [[noreturn]] static void Rethrow(ErrorCode code, TextArgument description,
                                          std::source_location source = std::source_location::current())
         {
             auto cause = std::current_exception();
@@ -197,18 +230,25 @@ namespace LLUtils
 #endif
         }
 
-        Exception(ErrorCode errorCode, std::string function, std::string description, std::error_code systemError,
+        Exception(ErrorCode errorCode, TextArgument function, TextArgument description, std::error_code systemError,
                   Mode exceptionMode, int callStackLevel, std::source_location source, std::exception_ptr cause)
         {
-            auto details = std::make_shared<EventArgs>(EventArgs{
-                .errorCode     = errorCode,
-                .description   = std::move(description),
-                .functionName  = std::move(function),
-                .exceptionmode = exceptionMode,
-                .source        = source,
-                .systemError   = systemError,
-                .cause         = std::move(cause),
-            });
+            const auto threadId     = PlatformUtility::GetCurrentThreadId();
+            const auto mainThreadId = sMainThreadId.load(std::memory_order_relaxed);
+            const auto threadRole   = threadId == 0 || mainThreadId == 0 ? ThreadRole::Unknown
+                                      : threadId == mainThreadId         ? ThreadRole::Main
+                                                                         : ThreadRole::Worker;
+            // Assign into final storage instead of moving an aggregate through noexcept container constructors.
+            auto details           = std::make_shared<EventArgs>();
+            details->errorCode     = errorCode;
+            details->description   = std::move(description);
+            details->functionName  = std::move(function);
+            details->exceptionmode = exceptionMode;
+            details->source        = source;
+            details->systemError   = systemError;
+            details->cause         = std::move(cause);
+            details->threadId      = threadId;
+            details->threadRole    = threadRole;
             // Once the basic error exists, optional enrichment must not replace it.
             try
             {
@@ -242,6 +282,8 @@ namespace LLUtils
             OnException.Raise(*fDetails);
         }
 
+        // Registration identifies the main thread; no other state is published through this ID.
+        static inline std::atomic<std::uint64_t> sMainThreadId{0};
         std::shared_ptr<const EventArgs> fDetails;
     };
 

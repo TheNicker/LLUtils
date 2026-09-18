@@ -6,7 +6,6 @@
 #include <concepts>
 #include <stdexcept>
 #include <iterator>
-#include <tuple>
 
 namespace LLUtils
 {
@@ -35,15 +34,13 @@ namespace LLUtils
                         --count;
                 }
                 const auto prefix = text.substr(0, count);
-                try
+                if (StringUtility::IsValidUtf8(prefix))
                 {
-                    // Conversion validates UTF-8. Keep the original bytes after validation.
-                    std::ignore = StringUtility::ToWString(prefix);
                     // Embedded NULs must not hide the rest of a dialog's diagnostic.
                     for (const char value : prefix)
                         fText.push_back(value == '\0' ? '?' : value);
                 }
-                catch (const std::invalid_argument&)
+                else
                 {
                     constexpr std::string_view invalid = "[invalid text]";
                     fText.append(invalid.substr(0, remaining));
@@ -123,6 +120,25 @@ namespace LLUtils
                 Append(Exception::ExceptionErrorCodeToString(details.errorCode));
                 Append(": ");
                 Append(std::string_view(details.description));
+                Append("\nThread: ");
+                if (details.threadId == 0)
+                    Append("unavailable (unknown)");
+                else
+                {
+                    Number(details.threadId);
+                    switch (details.threadRole)
+                    {
+                        case Exception::ThreadRole::Main:
+                            Append(" (main)");
+                            break;
+                        case Exception::ThreadRole::Worker:
+                            Append(" (worker)");
+                            break;
+                        default:
+                            Append(" (unknown)");
+                            break;
+                    }
+                }
                 Append("\nSource: ");
                 Append(details.source.line() != 0 ? details.source.function_name() : details.functionName.c_str());
                 if (details.source.line() != 0)
@@ -202,7 +218,12 @@ namespace LLUtils
             {
                 if (fTruncated)
                     fText.append(Truncation);
+#if defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
+                // MSVC Debug string moves can terminate on proxy-allocation failure.
+                return fText;
+#else
                 return std::move(fText);
+#endif
             }
 
           private:

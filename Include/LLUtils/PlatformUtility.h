@@ -29,6 +29,8 @@ SOFTWARE.
 #include <cstdlib>
 #include <vector>
 #include <memory>
+#include <tuple>
+#include <utility>
 #include "Platform.h"
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
 #include <Windows.h>
@@ -93,13 +95,25 @@ namespace LLUtils
     {
       public:
 
+        // Native IDs match debugger/OS diagnostics; they can be reused after a thread exits.
+        [[nodiscard]] static std::uint64_t GetCurrentThreadId() noexcept
+        {
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+            return ::GetCurrentThreadId();
+#elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+            return static_cast<std::uint64_t>(::gettid());
+#else
+            return 0;
+#endif
+        }
+
         struct StackTraceEntry
         {
-            native_string_type moduleName;
-            native_string_type name;
-            native_string_type sourceFileName;
-            uint64_t address = 0;
-            uint32_t line = 0;
+            native_string_type moduleName{LLUTILS_TEXT("")};
+            native_string_type name{LLUTILS_TEXT("")};
+            native_string_type sourceFileName{LLUTILS_TEXT("")};
+            uint64_t address      = 0;
+            uint32_t line         = 0;
             uint32_t displacement = 0;
         };
 
@@ -110,11 +124,11 @@ namespace LLUtils
         static StackTrace GetCallStack(int framesToSkip = 0)
         {
             constexpr std::size_t MaxFrames = 64;
+            const auto skip                 = static_cast<std::size_t>((std::max) (framesToSkip, 0));
+            if (skip >= MaxFrames)
+                return StackTrace(0);
             std::array<void*, MaxFrames> addresses{};
             StackTrace stackTrace(0);
-            const auto skip = static_cast<std::size_t>((std::max) (framesToSkip, 0));
-            if (skip >= MaxFrames)
-                return stackTrace;
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
             const auto frames = CaptureStackBackTrace(0, static_cast<DWORD>(addresses.size()), addresses.data(),
                                                       nullptr);
@@ -124,8 +138,9 @@ namespace LLUtils
             constexpr int frames = 0;
 #endif
             const auto count = static_cast<std::size_t>((std::max) (static_cast<int>(frames), 0));
+            stackTrace.reserve(count - (std::min) (skip, count));
             for (auto index = (std::min) (skip, count); index < count; ++index)
-                stackTrace.push_back({.address = reinterpret_cast<std::uintptr_t>(addresses[index])});
+                stackTrace.emplace_back().address = reinterpret_cast<std::uintptr_t>(addresses[index]);
 
 #if defined(LLUTILS_ENABLE_DEBUG_SYMBOLS) && LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
             try
@@ -210,7 +225,12 @@ namespace LLUtils
             { /* Preserve captured addresses if optional enrichment fails. */
             }
 #endif
+#if defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
+            // Copy construction can propagate a failed proxy allocation even when NRVO is disabled.
+            return std::as_const(stackTrace);
+#else
             return stackTrace;
+#endif
         }
 
         struct OSVersion
