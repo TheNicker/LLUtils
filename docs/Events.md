@@ -70,6 +70,10 @@ Suppose listeners A and B both need a live server connection. Each raise uses `R
 
 Checking availability only before the outer raise would miss the failure. `RaiseWhile` stops subsequent callbacks; it does not interrupt A or detect the outage itself.
 
+### Customizing notification policy
+
+Derived thread-safe notifications can use protected `VisitListeners` to customize delivery policy. [Exception diagnostics](ExceptionHandling.md) use it to contain observer failures and suppress recursive notification.
+
 ## Limitations
 
 - **Lifetimes:** keep the event stationary and alive until subscriptions and active calls finish; handles store an owner pointer. Captured pointers and references need their own lifetime protection.
