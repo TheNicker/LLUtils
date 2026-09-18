@@ -183,31 +183,8 @@ namespace LLUtils
             return index < names.size() ? names[index] : names.front();
         }
 
-        static native_string_type FormatStackTrace(const PlatformUtility::StackTrace& stackTrace, uint16_t maxDepth = std::numeric_limits<uint16_t>::max())
-        {
-            using namespace std;
-            using char_type = native_string_type::value_type;
-            basic_stringstream<char_type> ss;
-            uint16_t depth = 0;
-			for (const auto& f : stackTrace)
-			{
-                if (depth++ > maxDepth)
-                    break;
-
-				ss << filesystem::path(f.moduleName).filename().string<char_type>() << LLUTILS_TEXT("!") << f.name;
-				if (f.sourceFileName.empty() == false)
-					ss << LLUTILS_TEXT(" at ") << f.sourceFileName << dec << LLUTILS_TEXT(" line: ") << f.line
-#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
-                    << LLUTILS_TEXT(" column: ") << f.displacement
-#endif
-                    ;
-
-				ss << LLUTILS_TEXT(" at address 0x") << hex << f.address << endl;
-			}
-
-            return ss.str();
-
-        }
+        static native_string_type FormatStackTrace(const PlatformUtility::StackTrace& stackTrace,
+                                                   uint16_t maxDepth = std::numeric_limits<uint16_t>::max());
 
       private:
 
@@ -311,3 +288,6 @@ namespace LLUtils
 #else
     #define LL_ERROR LL_EXCEPTION_DONT_THROW
 #endif
+
+// Preserve the legacy static stack formatter for clients that include only Exception.h.
+#include "ExceptionFormatter.h"
