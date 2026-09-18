@@ -24,81 +24,87 @@ SOFTWARE.
 #include <LLUtils/UniqueIDProvider.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
+#include <mutex>
 #include <utility>
 #include <vector>
+
 namespace LLUtils
 {
+    template <class T, bool ThreadSafe = false>
+    class Event;
 
-    template <class T>
-    class Event
+    namespace EventDetail
     {
-      public:
-
-        // Event is single-threaded. Event must outlive all Connection objects.
-        using Func = std::function<T>;
-
-      private:
-
-        using ConnectionID         = std::uint64_t;
-        using ConnectionIDProvider = UniqueIdProvider<ConnectionID>;
-
-      public:
-
-        class Connection
+        // Both event modes own their registrations through the same move-only handle.
+        // The event supplies its token and unsubscription policy; no type erasure is needed.
+        template <class Owner, class Token>
+        class Subscription
         {
           public:
 
-            Connection()                             = default;
-            Connection(const Connection&)            = delete;
-            Connection& operator=(const Connection&) = delete;
-
-            Connection(Connection&& other) noexcept { MoveFrom(other); }
-
-            Connection& operator=(Connection&& other) noexcept
+            Subscription()                               = default;
+            Subscription(const Subscription&)            = delete;
+            Subscription& operator=(const Subscription&) = delete;
+            Subscription(Subscription&& other) noexcept { MoveFrom(other); }
+            Subscription& operator=(Subscription&& other) noexcept
             {
                 if (this != &other)
                 {
-                    Disconnect();
+                    Unsubscribe();
                     MoveFrom(other);
                 }
-
                 return *this;
             }
-
-            ~Connection() { Disconnect(); }
-
-            // Reports whether this handle owns a registration.
+            ~Subscription() { Unsubscribe(); }
             [[nodiscard]] explicit operator bool() const noexcept { return fEvent != nullptr; }
 
-            void Disconnect()
+            void Unsubscribe() noexcept(noexcept(std::declval<Owner&>().Unsubscribe(std::declval<Token>())))
             {
                 if (fEvent != nullptr)
                 {
-                    fEvent->Disconnect(fID);
+                    fEvent->Unsubscribe(fToken);
                     fEvent = nullptr;
-                    fID    = {};
+                    fToken = {};
                 }
             }
 
           private:
 
-            friend class Event<T>;
-
-            Connection(Event* event, ConnectionID id) : fEvent(event), fID(id) {}
-
-            void MoveFrom(Connection& other) noexcept
+            friend Owner;
+            Subscription(Owner* event, Token token) : fEvent(event), fToken(std::move(token)) {}
+            void MoveFrom(Subscription& other) noexcept
             {
                 fEvent       = other.fEvent;
-                fID          = other.fID;
+                fToken       = std::move(other.fToken);
                 other.fEvent = nullptr;
-                other.fID    = {};
+                other.fToken = {};
             }
-
-            Event* fEvent{};
-            ConnectionID fID{};
+            Owner* fEvent{};
+            Token fToken{};
         };
+    }  // namespace EventDetail
+
+    template <class T>
+    class Event<T, false>
+    {
+      public:
+
+        // Event is single-threaded and must stay at the same address while subscribed.
+        // It must outlive its subscriptions; only unsubscription is supported during dispatch.
+        using Func = std::function<T>;
+
+      private:
+
+        using SubscriptionID         = std::uint64_t;
+        using SubscriptionIDProvider = UniqueIdProvider<SubscriptionID>;
+
+      public:
+
+        using Subscription = EventDetail::Subscription<Event, SubscriptionID>;
 
         template <class... Args>
         void Raise(Args... args)
@@ -117,40 +123,27 @@ namespace LLUtils
             for (std::size_t index = 0; index < listenerCount && continueDispatch(); ++index)
             {
                 auto& listener = fListeners[index];
-                if (listener.connected)
+                if (listener.subscribed)
                     listener.func(args...);
             }
         }
 
-        [[nodiscard]] Connection Connect(Func func) { return Connection(this, AddListener(std::move(func))); }
-
-        void Add(Func func) { AddListener(std::move(func)); }
-
-        [[deprecated("Remove(Func) is only reliable for raw function pointers. Use Connect() and "
-                     "Connection::Disconnect().")]]
-        void Remove(const Func& func)
+        [[nodiscard]] Subscription Subscribe(Func func)
         {
-            const auto address = GetAddress(func);
-            if (address == nullptr)
-                return;
-
-            for (auto& listener : fListeners)
-            {
-                if (listener.connected && GetAddress(listener.func) == address)
-                    listener.connected = false;
-            }
-
-            if (fRaiseDepth == 0)
-                RemoveDisconnectedListeners();
+            const auto id = fSubscriptionIDProvider.Acquire();
+            fListeners.push_back(Listener{id, std::move(func), true});
+            return Subscription(this, id);
         }
 
       private:
 
+        friend Subscription;
+
         struct Listener
         {
-            ConnectionID id{};
+            SubscriptionID id{};
             Func func;
-            bool connected = true;
+            bool subscribed = true;
         };
 
         using Listeners = std::vector<Listener>;
@@ -167,7 +160,7 @@ namespace LLUtils
             {
                 --fEvent.fRaiseDepth;
                 if (fEvent.fRaiseDepth == 0)
-                    fEvent.RemoveDisconnectedListeners();
+                    fEvent.RemoveUnsubscribedListeners();
             }
 
           private:
@@ -175,44 +168,110 @@ namespace LLUtils
             Event& fEvent;
         };
 
-        ConnectionID AddListener(Func func)
-        {
-            const auto id = fConnectionIDProvider.Acquire();
-            fListeners.push_back(Listener{id, std::move(func), true});
-            return id;
-        }
-
-        void Disconnect(ConnectionID id)
+        void Unsubscribe(SubscriptionID id)
         {
             for (auto& listener : fListeners)
             {
                 if (listener.id == id)
                 {
-                    listener.connected = false;
+                    listener.subscribed = false;
                     break;
                 }
             }
 
             if (fRaiseDepth == 0)
-                RemoveDisconnectedListeners();
+                RemoveUnsubscribedListeners();
         }
 
-        static void* GetAddress(const Func& func)
-        {
-            using FnPointer = T*;
-            auto fnPointer  = func.template target<FnPointer>();
-            return fnPointer != nullptr ? reinterpret_cast<void*>(*fnPointer) : nullptr;
-        }
-
-        void RemoveDisconnectedListeners()
+        void RemoveUnsubscribedListeners()
         {
             fListeners.erase(std::remove_if(fListeners.begin(), fListeners.end(),
-                                            [](const Listener& listener) { return !listener.connected; }),
+                                            [](const Listener& listener) { return !listener.subscribed; }),
                              fListeners.end());
         }
 
         Listeners fListeners;
-        ConnectionIDProvider fConnectionIDProvider{1};
+        SubscriptionIDProvider fSubscriptionIDProvider{1};
         std::uint32_t fRaiseDepth = 0;
+    };
+
+    // Thread safety is opt-in: default events retain their storage, live-dispatch semantics,
+    // and lack of locking/snapshot allocation. This mode synchronizes registration and
+    // snapshots only; callbacks can run concurrently and must protect their own state.
+    template <class T>
+    class Event<T, true>
+    {
+      public:
+
+        using Func         = std::function<T>;
+        using Subscription = EventDetail::Subscription<Event, std::shared_ptr<Func>>;
+
+        // The event must stay at the same address and outlive its subscriptions and all calls.
+        // Different handles may be used concurrently; the same handle needs external synchronization.
+        [[nodiscard]] Subscription Subscribe(Func func)
+        {
+            auto callback = std::make_shared<Func>(std::move(func));
+            {
+                const std::lock_guard<std::mutex> lock(fMutex);
+                fCallbacks.push_back(callback);
+            }
+            return Subscription(this, std::move(callback));
+        }
+
+        template <class... Args>
+        void Raise(Args&&... args)
+        {
+            RaiseWhile([] { return true; }, std::forward<Args>(args)...);
+        }
+
+        // Like the default mode, callback/predicate exceptions propagate and stop dispatch.
+        // Unsubscription affects future snapshots; already selected callbacks may still run.
+        template <class Predicate, class... Args>
+        void RaiseWhile(Predicate&& continueDispatch, Args&&... args)
+        {
+            VisitListeners(
+                [&](const Func& func)
+                {
+                    const bool dispatch = continueDispatch();
+                    if (dispatch)
+                        func(args...);
+                    return dispatch;
+                });
+        }
+
+      protected:
+
+        // Visit a stable snapshot outside the lock, stopping when the visitor returns false.
+        // Derived notifications can provide failure policy without duplicating event ownership.
+        template <class Visitor>
+        void VisitListeners(Visitor&& visitor)
+        {
+            // Copy construction can throw; an MSVC debug vector's noexcept default
+            // constructor allocates iterator bookkeeping and cannot provide that guarantee.
+            auto callbacks = [&]
+            {
+                const std::lock_guard<std::mutex> lock(fMutex);
+                return fCallbacks;
+            }();
+            for (const auto& callback : callbacks)
+            {
+                if (!visitor(*callback))
+                    break;
+            }
+        }
+
+      private:
+
+        friend Subscription;
+
+        void Unsubscribe(const std::shared_ptr<Func>& callback) noexcept
+        {
+            // The subscription retains the removed callback until this lock has been released.
+            const std::lock_guard<std::mutex> lock(fMutex);
+            std::erase(fCallbacks, callback);
+        }
+
+        std::mutex fMutex;
+        std::vector<std::shared_ptr<Func>> fCallbacks;
     };
 }  // namespace LLUtils
