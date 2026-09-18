@@ -22,7 +22,12 @@ SOFTWARE.
 
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <vector>
 #include <memory>
 #include "Platform.h"
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
@@ -100,156 +105,110 @@ namespace LLUtils
 
         using StackTrace = std::vector<StackTraceEntry>;
 
-        static StackTrace GetCallStack([[maybe_unused]] int framesToSkip = 0)
+        // Keep diagnostic capture bounded. Symbol lookup is optional; raw instruction
+        // addresses remain useful when symbols are disabled, busy, or unavailable.
+        static StackTrace GetCallStack(int framesToSkip = 0)
         {
-            StackTrace stackTrace;
-
-#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && defined(LLUTILS_ENABLE_DEBUG_SYMBOLS) &&                             \
-    LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
-            constexpr USHORT MaxStackTraceSize = std::numeric_limits<USHORT>::max();
-            static thread_local std::array<void*, MaxStackTraceSize> stack;
-            const HANDLE process = GetCurrentProcess();
-
-            unsigned short frames = CaptureStackBackTrace(static_cast<DWORD>(framesToSkip), MaxStackTraceSize,
-                                                          stack.data(), nullptr);
-
-            static const std::string MutexPrefix = "OIV_Symbol_Api_Mutex";
-
-            struct ScopedMutex
-            {
-                ScopedMutex(bool allowThrow) : mutexLock(CreateMutexA(nullptr, FALSE, (MutexPrefix + "_Lock").c_str()))
-                {
-                    if (mutexLock != nullptr)
-                        WaitForSingleObject(mutexLock, INFINITE);
-                    else if (allowThrow == true)
-                        throw std::logic_error("Error, can not create mutex");
-                }
-
-                ~ScopedMutex()
-                {
-                    if (mutexLock != nullptr)
-                    {
-                        ReleaseMutex(mutexLock);
-                        CloseHandle(mutexLock);
-                    }
-                }
-
-              private:
-
-                const HANDLE mutexLock = nullptr;
-            };
-
-            ScopedMutex lock(false);
-
-            constexpr size_t maxNameLength = 255;
-            constexpr size_t sizeOfStruct = sizeof(SYMBOL_INFOW);
-            auto symbolReservedMemory = std::make_unique<std::byte[]>(sizeOfStruct +
-                                                                      (maxNameLength - 1) * sizeof(TCHAR));
-            SYMBOL_INFOW* symbol = reinterpret_cast<SYMBOL_INFOW*>(symbolReservedMemory.get());
-
-            if (SymInitializeW(process, nullptr, TRUE) == TRUE)
-            {
-                symbol->MaxNameLen = maxNameLength;
-                symbol->SizeOfStruct = sizeOfStruct;
-
-                stackTrace.resize(frames);
-                for (size_t i = 0; i < frames; i++)
-                {
-                    StackTraceEntry& entry = stackTrace[i];
-
-                    const DWORD64 memoryAddress = reinterpret_cast<DWORD64>(stack[i]);
-
-                    entry.address = memoryAddress;
-
-                    if (SymFromAddrW(process, memoryAddress, nullptr, symbol) == TRUE)
-                    {
-                        entry.name = symbol->Name;
-                        entry.address = symbol->Address;
-                    }
-
-                    IMAGEHLP_LINEW64 line;
-                    line.SizeOfStruct = sizeof(IMAGEHLP_LINEW64);
-                    DWORD disp;
-                    if (SymGetLineFromAddrW64(process, memoryAddress, &disp, &line) == TRUE)
-                    {
-                        entry.line = line.LineNumber;
-                        entry.displacement = disp;
-                        entry.sourceFileName = line.FileName;
-                    }
-
-                    IMAGEHLP_MODULEW64 module64;
-                    module64.SizeOfStruct = sizeof(IMAGEHLP_MODULEW64);
-
-                    if (SymGetModuleInfoW64(process, memoryAddress, &module64) == TRUE)
-                    {
-                        entry.moduleName = module64.ImageName;
-                    }
-                }
-                if (SymCleanup(process) == FALSE)
-                {
-                    // something bad has happend.
-                }
-            }
+            constexpr std::size_t MaxFrames = 64;
+            std::array<void*, MaxFrames> addresses{};
+            StackTrace stackTrace(0);
+            const auto skip = static_cast<std::size_t>((std::max) (framesToSkip, 0));
+            if (skip >= MaxFrames)
+                return stackTrace;
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+            const auto frames = CaptureStackBackTrace(0, static_cast<DWORD>(addresses.size()), addresses.data(),
+                                                      nullptr);
 #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
-            rlimit limit;
-            getrlimit(RLIMIT_STACK, &limit);
-            const int maxFrames = limit.rlim_cur;
-            auto callstackPtrs = std::make_unique<void*[]>(maxFrames);
-            int nFrames = backtrace(callstackPtrs.get(), maxFrames);
-            char** symbols = backtrace_symbols(callstackPtrs.get(), nFrames);
-            stackTrace.resize(nFrames - framesToSkip);
-            auto exec_path = GetExePath();
+            const auto frames = backtrace(addresses.data(), static_cast<int>(addresses.size()));
+#else
+            constexpr int frames = 0;
+#endif
+            const auto count = static_cast<std::size_t>((std::max) (static_cast<int>(frames), 0));
+            for (auto index = (std::min) (skip, count); index < count; ++index)
+                stackTrace.push_back({.address = reinterpret_cast<std::uintptr_t>(addresses[index])});
 
-            for (int i = 0; i < nFrames - framesToSkip; i++)
+#if defined(LLUTILS_ENABLE_DEBUG_SYMBOLS) && LLUTILS_ENABLE_DEBUG_SYMBOLS == 1
+            try
             {
-                int currentFrame = i + framesToSkip;
-                Dl_info info;
-                StackTraceEntry& entry = stackTrace[i];
-                entry.address = (uint64_t) callstackPtrs[currentFrame];
-                if (dladdr(callstackPtrs[currentFrame], &info))
+    #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
+                // DbgHelp is process-wide. Keep the existing cross-module lock name, but do
+                // not wait for another failing thread, or use DbgHelp after a lock failure.
+                struct SymbolSession
                 {
-                    if (info.dli_saddr != nullptr)
+                    HANDLE mutex     = CreateMutexW(nullptr, FALSE, L"OIV_Symbol_Api_Mutex_Lock");
+                    HANDLE process   = GetCurrentProcess();
+                    bool locked      = false;
+                    bool initialized = false;
+                    SymbolSession()
                     {
-                        entry.moduleName = info.dli_fname;
-                        void* symAddr = (void*) ((char*) info.dli_saddr - (char*) info.dli_fbase);
-                        std::stringstream ss;
-                        ss << symAddr;
-
-                        auto r = sh("addr2line -C  -e " + exec_path + " " + ss.str());
-
-                        if (r.find('?') == std::string::npos)
+                        if (mutex != nullptr)
                         {
-                            auto idx = r.find_first_of(':');
-                            std::string filename;
-                            std::string line;
-
-                            if (idx != std::string::npos)
-                            {
-                                entry.sourceFileName = r.substr(0, idx);
-                                entry.line = std::stol(r.substr(idx + 1, r.length() - idx - 1));
-                            }
+                            const auto result = WaitForSingleObject(mutex, 0);
+                            locked            = result == WAIT_OBJECT_0 || result == WAIT_ABANDONED;
+                            if (locked && result != WAIT_ABANDONED)
+                                initialized = SymInitializeW(process, nullptr, TRUE) != FALSE;
                         }
-
-                        char* demangled = NULL;
-                        int status{};
-                        size_t size{};
-                        demangled = abi::__cxa_demangle(info.dli_sname, nullptr, &size, &status);
-                        std::string functionName;
-                        if (status == 0)
+                    }
+                    ~SymbolSession()
+                    {
+                        if (initialized)
+                            SymCleanup(process);
+                        if (locked)
+                            ReleaseMutex(mutex);
+                        if (mutex != nullptr)
+                            CloseHandle(mutex);
+                    }
+                } symbols;
+                if (symbols.initialized)
+                {
+                    constexpr std::size_t MaxName = 256;
+                    alignas(SYMBOL_INFOW) std::array<std::byte, sizeof(SYMBOL_INFOW) + MaxName * sizeof(wchar_t)>
+                        storage{};
+                    auto* symbol         = reinterpret_cast<SYMBOL_INFOW*>(storage.data());
+                    symbol->SizeOfStruct = sizeof(SYMBOL_INFOW);
+                    symbol->MaxNameLen   = MaxName;
+                    for (auto& entry : stackTrace)
+                    {
+                        if (SymFromAddrW(symbols.process, entry.address, nullptr, symbol))
+                            entry.name.assign(symbol->Name, symbol->NameLen);
+                        IMAGEHLP_LINEW64 line{};
+                        line.SizeOfStruct = sizeof(line);
+                        DWORD displacement{};
+                        if (SymGetLineFromAddrW64(symbols.process, entry.address, &displacement, &line))
                         {
-                            auto buffer = std::make_unique<char[]>(size);
-                            entry.name = abi::__cxa_demangle(info.dli_sname, buffer.get(), &size, &status);
-                            free(demangled);
+                            entry.line         = line.LineNumber;
+                            entry.displacement = displacement;
+                            if (line.FileName != nullptr)
+                                entry.sourceFileName = line.FileName;
                         }
-                        else
+                        IMAGEHLP_MODULEW64 module{};
+                        module.SizeOfStruct = sizeof(module);
+                        if (SymGetModuleInfoW64(symbols.process, entry.address, &module))
+                            entry.moduleName = module.ImageName;
+                    }
+                }
+    #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
+                for (auto& entry : stackTrace)
+                {
+                    Dl_info info{};
+                    if (dladdr(reinterpret_cast<void*>(entry.address), &info))
+                    {
+                        if (info.dli_fname != nullptr)
+                            entry.moduleName = info.dli_fname;
+                        if (info.dli_sname != nullptr)
                         {
-                            if (info.dli_sname != nullptr)
-                                entry.name = info.dli_sname;
+                            int status{};
+                            const std::unique_ptr<char, decltype(&std::free)> name(
+                                abi::__cxa_demangle(info.dli_sname, nullptr, nullptr, &status), &std::free);
+                            entry.name = status == 0 && name ? name.get() : info.dli_sname;
                         }
                     }
                 }
+    #endif
             }
-            free(symbols);
+            catch (...)
+            { /* Preserve captured addresses if optional enrichment fails. */
+            }
 #endif
             return stackTrace;
         }
