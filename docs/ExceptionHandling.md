@@ -25,6 +25,7 @@ Create or capture the error, optionally add context inside a catch, then format 
 | `FormatException(details)` / `FormatException(exception_ptr)` | Returns a UTF-8 report. An empty pointer reports that no active exception is available. |
 | `LL_EXCEPTION_DONT_THROW(code, description)` | Reports in `Mode::Error` without explicitly throwing the diagnostic. |
 | `LL_ERROR(code, description)` | Throws by default in `_DEBUG`; `Exception::SetThrowErrorsInDebug(false)` switches it to reporting only. Release builds report only. |
+| `StartThread(function, args...)` | From [Thread.h](../Include/LLUtils/Thread.h); returns a `std::thread` that terminates if its task lets an exception escape. Join or detach normally. |
 
 ## Example
 
@@ -86,6 +87,10 @@ Suppose observer A logs errors and observer B displays them:
 2. A encounters a logging failure and constructs and throws another LLUtils exception. Its construction does not notify observers again on that thread, preventing recursive logging.
 3. The dispatcher catches A's exception and still invokes B with the original connection error. Diagnostic failure does not replace the error being reported.
 
+### Preserving worker termination diagnostics
+
+On Windows, `StartThread` installs the launching thread's terminate handler in the worker because the [Microsoft CRT stores that handler per thread](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/set-terminate-crt?view=msvc-170). It calls termination from inside a catch so the handler can inspect the escaping exception through `std::current_exception()`.
+
 ## Limitations
 
 - **Borrowed data:** `GetDetails()`, `what()`, and observer arguments do not transfer ownership. Retain an exception copy or copy needed fields before the owning snapshot disappears.
@@ -93,6 +98,7 @@ Suppose observer A logs errors and observer B displays them:
 - **Reporting can fail:** initial construction and formatting allocate. Even `LL_EXCEPTION_DONT_THROW` can throw on allocation failure. A `noexcept` reporter must catch failures and send a static fallback directly to its sink, without relying on application observers or another formatted report.
 - **Optional diagnostics:** stack, symbol, and system-message enrichment are best-effort. Observer snapshot allocation failure skips notification without replacing the original error.
 - **Report limits:** at most 16 KiB, 16 exception nodes, and 64 frames per node; `Mode::Error` shows at most three frames. These limits bound formatted output, not the stored description or cause chain. Invalid UTF-8 uses a placeholder; native text APIs need conversion.
+- **Thread termination:** some paths, including Windows `noexcept` failures, may expose no original exception. Threads created without `StartThread` need equivalent handling if required. Diagnostics do not make a corrupted process recoverable.
 
 ## Complexity
 
