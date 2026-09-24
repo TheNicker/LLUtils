@@ -226,7 +226,9 @@ namespace LLUtils
             }
 #endif
 #if defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
-            // Copy construction can propagate a failed proxy allocation even when NRVO is disabled.
+            // MSVC's noexcept vector move allocates iterator bookkeeping in Debug. A rare allocation
+            // failure invokes std::terminate before an outer catch can handle it. Copy instead so failure
+            // remains catchable even when return-value elision is disabled.
             return std::as_const(stackTrace);
 #else
             return stackTrace;

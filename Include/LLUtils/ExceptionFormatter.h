@@ -219,7 +219,9 @@ namespace LLUtils
                 if (fTruncated)
                     fText.append(Truncation);
 #if defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
-                // MSVC Debug string moves can terminate on proxy-allocation failure.
+                // MSVC's noexcept string move allocates iterator bookkeeping in Debug. A rare allocation
+                // failure invokes std::terminate before an outer catch can handle it. Copying may also
+                // allocate, but its failure is catchable.
                 return fText;
 #else
                 return std::move(fText);

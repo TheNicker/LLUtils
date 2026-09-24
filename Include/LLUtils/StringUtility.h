@@ -287,10 +287,11 @@ namespace LLUtils
                 using SourceChar  = typename decltype(source)::value_type;
                 using DestChar    = typename DST::value_type;
                 if constexpr (std::is_same_v<SourceChar, DestChar>)
-                    return source.empty() ? DST{} : DST(source.data(), source.size());
+                    return source.empty() ? DST(0, DestChar{}) : DST(source.data(), source.size());
                 else
                 {
-                    DST result;
+                    // The count constructor lets MSVC Debug iterator-proxy allocation failures propagate.
+                    DST result(0, DestChar{});
                     // With identity conversions handled above, char and char8_t can copy the
                     // same UTF-8 bytes. Converting to or from wchar_t requires transcoding
                     // because it uses UTF-16 on Windows and UTF-32 on Linux.
@@ -346,7 +347,14 @@ namespace LLUtils
                         if (!valid)
                             throw std::invalid_argument("Invalid Unicode input");
                     }
+#if defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
+                    // MSVC's noexcept string move allocates iterator bookkeeping in Debug. A rare allocation
+                    // failure invokes std::terminate before an outer catch can handle it. Copy instead so failure
+                    // remains catchable even when return-value elision is disabled.
+                    return std::as_const(result);
+#else
                     return result;
+#endif
                 }
             }
         }
