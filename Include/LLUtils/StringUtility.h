@@ -219,6 +219,15 @@ namespace LLUtils
 
       public:
 
+        // Validate without allocating or transcoding; embedded NUL is valid Unicode input.
+        [[nodiscard]] static constexpr bool IsValidUtf8(std::string_view text) noexcept
+        {
+            for (std::size_t position = 0; position < text.size();)
+                if (Decode(text, position) == InvalidCodePoint)
+                    return false;
+            return true;
+        }
+
         template <typename char_type, typename string_type = std::basic_string<char_type>>
         static string_type& rtrim(string_type& s, const char_type* t)
         {
