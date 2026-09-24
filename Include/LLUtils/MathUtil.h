@@ -29,11 +29,29 @@ namespace LLUtils
 {
     class Math
     {
-    public:
-        
-        static constexpr double PI =  3.14159265358979323846;
-        
-		template <typename T, typename std::enable_if_t<std::is_integral_v<T>, int> = 0>
+      public:
+
+        static constexpr double PI = 3.14159265358979323846;
+
+        template <typename T, typename std::enable_if_t<std::is_integral_v<T>, int> = 0>
+        static consteval LLUTILS_FORCE_INLINE T Pow10(unsigned int exponent)
+        {
+            T result = 1;
+            for (unsigned int i = 0; i < exponent; ++i)
+                result *= 10;
+            return result;
+        }
+
+        template <typename T, typename std::enable_if_t<std::is_integral_v<T>, int> = 0>
+        static consteval LLUTILS_FORCE_INLINE T Pow2(unsigned int exponent)
+        {
+            T result = 1;
+            for (unsigned int i = 0; i < exponent; ++i)
+                result *= 2;
+            return result;
+        }
+
+        template <typename T, typename std::enable_if_t<std::is_integral_v<T>, int> = 0>
         static constexpr LLUTILS_FORCE_INLINE T Modulu(T val, T mod)
         {
             return (mod + (val % mod)) % mod;
@@ -62,4 +80,4 @@ namespace LLUtils
             return (val * static_cast<T>(PI)) / static_cast<T>(180);
         }
     };
-}
+}  // namespace LLUtils
