@@ -23,6 +23,8 @@ SOFTWARE.
 #pragma once
 
 #include "Event.h"
+#include "DepthScope.h"
+#include "Emergency.h"
 #include "PlatformUtility.h"
 #include "StringUtility.h"
 
@@ -119,15 +121,19 @@ namespace LLUtils
             using Base::Subscribe;
             using Base::Subscription;
 
+            // Observer-dispatch depth on this thread. A count rather than a flag so the recursion
+            // terminator in Raise stays correct even if Raise ever permits nesting.
+            [[nodiscard]] static unsigned NotifyDepth() noexcept { return sDepth; }
+
             void Raise(const EventArgs& args) noexcept
             {
-                if (sNotifying)
+                // An observer that notifies again would otherwise dispatch forever, because nothing stops
+                // a diagnostic raised inside a callback from re-entering.
+                if (sDepth != 0)
                     return;
-                struct NotificationScope
-                {
-                    NotificationScope() { sNotifying = true; }
-                    ~NotificationScope() { sNotifying = false; }
-                } scope;
+                // No wrapper type: only Raise constructs this scope, and Raise is a member, so the counter
+                // stays private. External callers use Emergency::Scope, which does need one.
+                const DepthScope<unsigned> scope{sDepth};
                 try
                 {
                     VisitListeners(
@@ -150,7 +156,9 @@ namespace LLUtils
 
           private:
 
-            static inline thread_local bool sNotifying = false;
+            // Nesting of observer dispatch on this thread. Declared after Raise because a function body
+            // is a complete-class context, so a later member is visible there.
+            static inline thread_local unsigned sDepth = 0;
         };
 
         static OnExceptionEventType OnException;
@@ -279,7 +287,11 @@ namespace LLUtils
             {
             }
             fDetails = std::move(details);
-            OnException.Raise(*fDetails);
+            // Notify unless this thread is already reporting something. A formatter or sink failure must
+            // not dispatch application callbacks or reenter the normal queue, and a diagnostic built
+            // inside the observer dispatch that is already reporting one must not dispatch again.
+            if (OnException.NotifyDepth() == 0 && !EmergencyDetail::Emergency::Active())
+                OnException.Raise(*fDetails);
         }
 
         // Registration identifies the main thread; no other state is published through this ID.
