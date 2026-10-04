@@ -27,6 +27,7 @@ SOFTWARE.
 #endif
 
 #include "StringDefs.h"
+#include "UnicodeCodec.h"
 #include <algorithm>
 #include <climits>
 #include <cstdint>
@@ -80,141 +81,20 @@ namespace LLUtils
             return text;
         }
 
-        static constexpr char32_t InvalidCodePoint = 0x110000;
+        // Scalar transcoding lives in UnicodeCodec.h so the logging crash path shares one decoder.
+        // These forwarders keep the internal call sites below unchanged.
+        static constexpr char32_t InvalidCodePoint = UnicodeDetail::InvalidCodePoint;
 
-        // Transcoding decodes each scalar into char32_t and immediately encodes it in the
-        // destination format, so no intermediate UTF-32 buffer is needed. Identity conversions
-        // and char/char8_t copies preserve code units directly and bypass this codec.
-        //
-        // A portable, header-only codec gives Windows and Linux the same locale-independent
-        // behavior without another dependency or backend selection. It converts text in one pass
-        // with at most one allocation, avoiding temporary strings and preliminary zero-fill.
-        // Benchmarks show this is faster than the original CRT mbsrtowcs/wcsrtombs implementation.
-        //
-        // Windows MultiByteToWideChar and WideCharToMultiByte are also locale-independent with
-        // CP_UTF8 and strict flags. They can be faster for larger inputs, while tiny inputs can
-        // favor this codec. The portable implementation keeps the current design simple; another
-        // backend can be added if application profiling justifies it. Comparisons should use
-        // equivalent validation and allocation policies.
-        //
-        // Other Unicode representations can reuse scalar conversion. Legacy encodings would
-        // also need mapping tables, sometimes decoder state, and a policy for characters they
-        // cannot represent. Decode does not throw, allowing conversion to write directly into
-        // the uninitialized storage supplied by resize_and_overwrite.
         template <class Char>
         static constexpr char32_t Decode(std::basic_string_view<Char> text, std::size_t& position) noexcept
         {
-            char32_t value{};
-            if constexpr (std::is_same_v<Char, wchar_t>)
-            {
-                value = static_cast<char32_t>(text[position++]);
-                if constexpr (sizeof(wchar_t) == 2)
-                {
-                    if (value >= 0xd800 && value <= 0xdbff)
-                    {
-                        if (position == text.size())
-                            return InvalidCodePoint;
-                        const char32_t low = static_cast<char32_t>(text[position++]);
-                        if (low < 0xdc00 || low > 0xdfff)
-                            return InvalidCodePoint;
-                        value = 0x10000 + ((value - 0xd800) << 10) + (low - 0xdc00);
-                    }
-                }
-            }
-            else
-            {
-                value = static_cast<unsigned char>(text[position++]);
-                if (value >= 0x80)
-                {
-                    unsigned continuationCount{};
-                    char32_t minimum{};
-                    if (value >= 0xc2 && value <= 0xdf)
-                    {
-                        continuationCount = 1;
-                        minimum           = 0x80;
-                        value &= 0x1f;
-                    }
-                    else if (value >= 0xe0 && value <= 0xef)
-                    {
-                        continuationCount = 2;
-                        minimum           = 0x800;
-                        value &= 0x0f;
-                    }
-                    else if (value >= 0xf0 && value <= 0xf4)
-                    {
-                        continuationCount = 3;
-                        minimum           = 0x10000;
-                        value &= 0x07;
-                    }
-                    else
-                        return InvalidCodePoint;
-
-                    if (continuationCount > text.size() - position)
-                        return InvalidCodePoint;
-                    for (unsigned index = 0; index < continuationCount; ++index)
-                    {
-                        const auto next = static_cast<unsigned char>(text[position++]);
-                        if ((next & 0xc0) != 0x80)
-                            return InvalidCodePoint;
-                        value = (value << 6) | (next & 0x3f);
-                    }
-                    if (value < minimum)
-                        return InvalidCodePoint;
-                }
-            }
-            if (value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff))
-                return InvalidCodePoint;
-            return value;
+            return UnicodeDetail::Decode(text, position);
         }
 
         template <class Char>
         static constexpr void Encode(char32_t value, Char* output, std::size_t& position) noexcept
         {
-            if constexpr (std::is_same_v<Char, wchar_t>)
-            {
-                if constexpr (sizeof(wchar_t) == 2)
-                {
-                    if (value >= 0x10000)
-                    {
-                        value -= 0x10000;
-                        output[position++] = static_cast<Char>(0xd800 + (value >> 10));
-                        value              = 0xdc00 + (value & 0x3ff);
-                    }
-                }
-                output[position++] = static_cast<Char>(value);
-            }
-            else
-            {
-                // The scalar is already validated, so each UTF-8 form can use fixed stores
-                // without a sizing helper or a loop over its bytes.
-                Char* const destination = output + position;
-                if (value < 0x80)
-                {
-                    destination[0] = static_cast<Char>(value);
-                    ++position;
-                }
-                else if (value < 0x800)
-                {
-                    destination[0] = static_cast<Char>(0xc0 | (value >> 6));
-                    destination[1] = static_cast<Char>(0x80 | (value & 0x3f));
-                    position += 2;
-                }
-                else if (value < 0x10000)
-                {
-                    destination[0] = static_cast<Char>(0xe0 | (value >> 12));
-                    destination[1] = static_cast<Char>(0x80 | ((value >> 6) & 0x3f));
-                    destination[2] = static_cast<Char>(0x80 | (value & 0x3f));
-                    position += 3;
-                }
-                else
-                {
-                    destination[0] = static_cast<Char>(0xf0 | (value >> 18));
-                    destination[1] = static_cast<Char>(0x80 | ((value >> 12) & 0x3f));
-                    destination[2] = static_cast<Char>(0x80 | ((value >> 6) & 0x3f));
-                    destination[3] = static_cast<Char>(0x80 | (value & 0x3f));
-                    position += 4;
-                }
-            }
+            UnicodeDetail::Encode(value, output, position);
         }
 
       public:
@@ -274,6 +154,8 @@ namespace LLUtils
         // Strings and views preserve embedded NULs, while pointers end at the first NUL.
         // Conversion between byte and wide strings rejects malformed Unicode. Identity and
         // char/char8_t copies preserve code units without validation. Null pointers are rejected.
+        // The shared codec does the transcoding, so this wrapper adds only the allocation policy:
+        // one pass, at most one allocation, no temporary strings and no preliminary zero-fill.
         template <class DST, class SRC>
             requires(IsString<DST> && requires(const SRC& source) { View(source); })
         static DST ConvertString(SRC&& sourceString)
