@@ -291,28 +291,8 @@ namespace LLUtils
                 return {0, true};
             if (destination == nullptr)
                 throw std::invalid_argument("Null string destination");
-            std::size_t written  = (std::min) (source.size(), capacity - 1);
+            const auto written   = UnicodeDetail::FindTruncationBoundary(source, capacity - 1);
             const bool truncated = written < source.size();
-            if (truncated)
-            {
-                if constexpr (std::is_same_v<Char, wchar_t>)
-                {
-                    if constexpr (sizeof(wchar_t) == 2)
-                    {
-                        if (written != 0 && source[written - 1] >= 0xd800 && source[written - 1] <= 0xdbff)
-                            --written;
-                    }
-                }
-                else
-                {
-                    // For valid UTF-8, at most three steps back reach the start of the cut code point.
-                    // Truncation ensures source[written] is within the input.
-                    for (unsigned backtracked = 0; written != 0 && backtracked < 3 &&
-                                                   (static_cast<unsigned char>(source[written]) & 0xc0) == 0x80;
-                         ++backtracked)
-                        --written;
-                }
-            }
             if (written != 0)
                 std::memmove(destination, source.data(), written * sizeof(Char));
             destination[written] = Char{};

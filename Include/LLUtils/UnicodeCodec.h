@@ -1,12 +1,46 @@
 #pragma once
+#include <algorithm>
 #include <cstddef>
 #include <string_view>
 #include <type_traits>
 
 namespace LLUtils::UnicodeDetail
 {
-    constexpr char32_t InvalidCodePoint      = 0x110000;
-    constexpr char32_t ReplacementCharacter  = 0xfffd;
+    constexpr char32_t InvalidCodePoint     = 0x110000;
+    constexpr char32_t ReplacementCharacter = 0xfffd;
+
+    // A high surrogate starts a two-unit UTF-16 encoding and cannot end a truncated prefix.
+    static constexpr bool IsUtf16HighSurrogate(char32_t codeUnit) noexcept
+    {
+        return codeUnit >= 0xd800 && codeUnit <= 0xdbff;
+    }
+
+    // Find where valid Unicode text can be cut without exceeding maxCodeUnits. The returned index
+    // counts source code units, not characters or UTF-8 output bytes. Inspect only the cutoff
+    // boundary, leaving content validation to the caller.
+    template <class Char>
+    static constexpr std::size_t FindTruncationBoundary(std::basic_string_view<Char> text,
+                                                        std::size_t maxCodeUnits) noexcept
+    {
+        auto boundary = (std::min) (text.size(), maxCodeUnits);
+        if (boundary < text.size())
+        {
+            // UTF-16 can split a surrogate pair. UTF-32 already uses one code unit per scalar.
+            if constexpr (sizeof(Char) == 2)
+            {
+                if (boundary != 0 && IsUtf16HighSurrogate(text[boundary - 1]))
+                    --boundary;
+            }
+            else if constexpr (sizeof(Char) == 1)
+            {
+                // Valid UTF-8 needs at most three steps back. Malformed continuation runs can be
+                // longer, so walk to their start and leave validation of the retained prefix to the caller.
+                while (boundary != 0 && (static_cast<unsigned char>(text[boundary]) & 0xc0) == 0x80)
+                    --boundary;
+            }
+        }
+        return boundary;
+    }
 
     // Portable, allocation-free scalar transcoding, shared by StringUtility and the logging
     // emergency path. Decode reads one scalar and Encode writes it in the destination format, so no
@@ -37,7 +71,7 @@ namespace LLUtils::UnicodeDetail
             value = static_cast<char32_t>(text[position++]);
             if constexpr (sizeof(wchar_t) == 2)
             {
-                if (value >= 0xd800 && value <= 0xdbff)
+                if (IsUtf16HighSurrogate(value))
                 {
                     if (position == text.size())
                         return InvalidCodePoint;

@@ -1,5 +1,6 @@
 #pragma once
 #include "Exception.h"
+#include "UnicodeCodec.h"
 
 #include <algorithm>
 #include <charconv>
@@ -26,14 +27,9 @@ namespace LLUtils
                 if (fTruncated)
                     return;
                 const auto remaining = MaxReportBytes - Truncation.size() - fText.size();
-                auto count           = (std::min) (remaining, text.size());
+                const auto count     = UnicodeDetail::FindTruncationBoundary(text, remaining);
                 const bool truncated = count < text.size();
-                if (truncated)
-                {
-                    while (count != 0 && (static_cast<unsigned char>(text[count]) & 0xc0) == 0x80)
-                        --count;
-                }
-                const auto prefix = text.substr(0, count);
+                const auto prefix    = text.substr(0, count);
                 if (StringUtility::IsValidUtf8(prefix))
                 {
                     // Embedded NULs must not hide the rest of a dialog's diagnostic.
@@ -60,26 +56,35 @@ namespace LLUtils
                 }
             }
 
-            void Native(const native_string_type& text)
+            // Append native text as UTF-8. Bound wide input before conversion to limit temporary
+            // storage, then let Append enforce the final UTF-8 byte budget.
+            void AppendNativeTextAsUtf8(const native_string_type& text)
             {
-#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
-                if (fTruncated)
-                    return;
-                auto count = (std::min) (text.size(), MaxReportBytes);
-                if (count < text.size() && count != 0 && text[count - 1] >= 0xd800 && text[count - 1] <= 0xdbff)
-                    --count;
-                try
+                // The generic argument lets if constexpr discard incompatible narrow or wide conversions.
+                [this](const auto& nativeText)
                 {
-                    Append(StringUtility::ToAString(std::wstring_view(text.data(), count)));
-                }
-                catch (const std::invalid_argument&)
-                {
-                    Append("[invalid path]");
-                }
-                fTruncated = fTruncated || count < text.size();
-#else
-                Append(std::string_view(text));
-#endif
+                    if constexpr (std::same_as<native_char_type, wchar_t>)
+                    {
+                        if (fTruncated)
+                            return;
+                        const std::wstring_view wideText(nativeText.data(), nativeText.size());
+                        // Valid wide text needs at least as many UTF-8 bytes as source code units.
+                        constexpr auto maxSourceCodeUnits = MaxReportBytes;
+                        const auto prefixCodeUnits        = UnicodeDetail::FindTruncationBoundary(wideText,
+                                                                                                  maxSourceCodeUnits);
+                        try
+                        {
+                            Append(StringUtility::ToAString(wideText.substr(0, prefixCodeUnits)));
+                        }
+                        catch (const std::invalid_argument&)
+                        {
+                            Append("[invalid path]");
+                        }
+                        fTruncated = fTruncated || prefixCodeUnits < nativeText.size();
+                    }
+                    else
+                        Append(std::string_view(nativeText));
+                }(text);
             }
 
             template <std::integral T>
@@ -97,15 +102,15 @@ namespace LLUtils
                 for (std::size_t index = 0; index < count && !fTruncated; ++index)
                 {
                     const auto& frame = stack[index];
-                    Native(frame.moduleName);
+                    AppendNativeTextAsUtf8(frame.moduleName);
                     Append("!");
-                    Native(frame.name);
+                    AppendNativeTextAsUtf8(frame.name);
                     Append(" at 0x");
                     Number(frame.address, 16);
                     if (!frame.sourceFileName.empty())
                     {
                         Append(" at ");
-                        Native(frame.sourceFileName);
+                        AppendNativeTextAsUtf8(frame.sourceFileName);
                         Append(":");
                         Number(frame.line);
                     }
