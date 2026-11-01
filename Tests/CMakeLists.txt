@@ -15,3 +15,7 @@ endif()
 add_subdirectory(Logging)
 
 add_subdirectory(Utilities)
+
+foreach(testTarget IN ITEMS tests_logging tests_utilities)
+target_link_libraries(${testTarget} PRIVATE Catch2::Catch2WithMain)
+endforeach()

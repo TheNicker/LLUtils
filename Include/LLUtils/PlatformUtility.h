@@ -30,6 +30,7 @@ SOFTWARE.
 #include <vector>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include "Platform.h"
 #if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32
@@ -161,7 +162,16 @@ namespace LLUtils
                             const auto result = WaitForSingleObject(mutex, 0);
                             locked            = result == WAIT_OBJECT_0 || result == WAIT_ABANDONED;
                             if (locked && result != WAIT_ABANDONED)
-                                initialized = SymInitializeW(process, nullptr, TRUE) != FALSE;
+                            {
+                                const auto initialize = [&]<typename CharT>()
+                                {
+                                    if constexpr (std::is_same_v<CharT, wchar_t>)
+                                        return SymInitializeW(process, nullptr, TRUE) != FALSE;
+                                    else
+                                        return SymInitialize(process, nullptr, TRUE) != FALSE;
+                                };
+                                initialized = initialize.template operator()<native_char_type>();
+                            }
                         }
                     }
                     ~SymbolSession()
@@ -177,30 +187,63 @@ namespace LLUtils
                 if (symbols.initialized)
                 {
                     constexpr std::size_t MaxName = 256;
-                    alignas(SYMBOL_INFOW) std::array<std::byte, sizeof(SYMBOL_INFOW) + MaxName * sizeof(wchar_t)>
-                        storage{};
-                    auto* symbol         = reinterpret_cast<SYMBOL_INFOW*>(storage.data());
-                    symbol->SizeOfStruct = sizeof(SYMBOL_INFOW);
-                    symbol->MaxNameLen   = MaxName;
-                    for (auto& entry : stackTrace)
+                    const auto resolveSymbols = [&]<typename CharT, typename Trace>(Trace& trace)
                     {
-                        if (SymFromAddrW(symbols.process, entry.address, nullptr, symbol))
-                            entry.name.assign(symbol->Name, symbol->NameLen);
-                        IMAGEHLP_LINEW64 line{};
-                        line.SizeOfStruct = sizeof(line);
-                        DWORD displacement{};
-                        if (SymGetLineFromAddrW64(symbols.process, entry.address, &displacement, &line))
+                        if constexpr (std::is_same_v<CharT, wchar_t>)
                         {
-                            entry.line         = line.LineNumber;
-                            entry.displacement = displacement;
-                            if (line.FileName != nullptr)
-                                entry.sourceFileName = line.FileName;
+                            alignas(SYMBOL_INFOW)
+                                std::array<std::byte, sizeof(SYMBOL_INFOW) + MaxName * sizeof(wchar_t)> storage{};
+                            auto* symbol         = reinterpret_cast<SYMBOL_INFOW*>(storage.data());
+                            symbol->SizeOfStruct = sizeof(SYMBOL_INFOW);
+                            symbol->MaxNameLen   = MaxName;
+                            for (auto& entry : trace)
+                            {
+                                if (SymFromAddrW(symbols.process, entry.address, nullptr, symbol))
+                                    entry.name.assign(symbol->Name, symbol->NameLen);
+                                IMAGEHLP_LINEW64 line{};
+                                line.SizeOfStruct = sizeof(line);
+                                DWORD displacement{};
+                                if (SymGetLineFromAddrW64(symbols.process, entry.address, &displacement, &line))
+                                {
+                                    entry.line         = line.LineNumber;
+                                    entry.displacement = displacement;
+                                    if (line.FileName != nullptr)
+                                        entry.sourceFileName = line.FileName;
+                                }
+                                IMAGEHLP_MODULEW64 module{};
+                                module.SizeOfStruct = sizeof(module);
+                                if (SymGetModuleInfoW64(symbols.process, entry.address, &module))
+                                    entry.moduleName = module.ImageName;
+                            }
                         }
-                        IMAGEHLP_MODULEW64 module{};
-                        module.SizeOfStruct = sizeof(module);
-                        if (SymGetModuleInfoW64(symbols.process, entry.address, &module))
-                            entry.moduleName = module.ImageName;
-                    }
+                        else
+                        {
+                            alignas(SYMBOL_INFO) std::array<std::byte, sizeof(SYMBOL_INFO) + MaxName> storage{};
+                            auto* symbol         = reinterpret_cast<SYMBOL_INFO*>(storage.data());
+                            symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+                            symbol->MaxNameLen   = MaxName;
+                            for (auto& entry : trace)
+                            {
+                                if (SymFromAddr(symbols.process, entry.address, nullptr, symbol))
+                                    entry.name.assign(symbol->Name, symbol->NameLen);
+                                IMAGEHLP_LINE64 line{};
+                                line.SizeOfStruct = sizeof(line);
+                                DWORD displacement{};
+                                if (SymGetLineFromAddr64(symbols.process, entry.address, &displacement, &line))
+                                {
+                                    entry.line         = line.LineNumber;
+                                    entry.displacement = displacement;
+                                    if (line.FileName != nullptr)
+                                        entry.sourceFileName = line.FileName;
+                                }
+                                IMAGEHLP_MODULE64 module{};
+                                module.SizeOfStruct = sizeof(module);
+                                if (SymGetModuleInfo64(symbols.process, entry.address, &module))
+                                    entry.moduleName = module.ImageName;
+                            }
+                        }
+                    };
+                    resolveSymbols.template operator()<native_char_type>(stackTrace);
                 }
     #elif LLUTILS_PLATFORM == LLUTILS_PLATFORM_LINUX
                 for (auto& entry : stackTrace)
