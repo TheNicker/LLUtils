@@ -4,6 +4,7 @@
 #include <LLUtils/Logging/Logger.h>
 #include "../Support/LoggingFixtures.h"
 #include "../Support/TempFolder.h"
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -17,6 +18,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#ifdef _WIN32
+    #include <process.h>
+#endif
 
 namespace
 {
@@ -39,12 +43,14 @@ TEST_CASE("Emergency output bounds notices, preserves console Unicode and reject
 #else
     const auto mode = GENERATE("inherit", "bound");
 #endif
-    const auto command = "\"" + helper.string() + "\" " + mode + " \"" + folder.path.string() + "\"";
-    // Generated paths contain no shell metacharacters. The helper uses native child creation, not a shell.
 #ifdef _WIN32
-    const auto shellCommand = "\"" + command + "\"";
-    CHECK(std::system(shellCommand.c_str()) == 0);
+    const std::array<std::wstring, 3> arguments{helper.native(), std::filesystem::path(mode).native(),
+                                                folder.path.native()};
+    const std::array<const wchar_t*, 4> commandLine{arguments[0].c_str(), arguments[1].c_str(), arguments[2].c_str(),
+                                                    nullptr};
+    CHECK(_wspawnv(_P_WAIT, helper.c_str(), commandLine.data()) == 0);
 #else
+    const auto command = "\"" + helper.string() + "\" " + mode + " \"" + folder.path.string() + "\"";
     CHECK(std::system(command.c_str()) == 0);
 #endif
     const auto content = ReadFile(folder.path / "emergency");

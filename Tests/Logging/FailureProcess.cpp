@@ -51,8 +51,11 @@ namespace
         wchar_t path[4096];
         for (std::uintptr_t value = 4; value < 65536; value += 4)
         {
-            const auto count = GetFinalPathNameByHandleW(reinterpret_cast<HANDLE>(value), path, 4096,
-                                                         FILE_NAME_NORMALIZED);
+            const auto handle = reinterpret_cast<HANDLE>(value);
+            // Runner standard streams may be pipes; only disk handles have paths to inspect.
+            if (GetFileType(handle) != FILE_TYPE_DISK)
+                continue;
+            const auto count = GetFinalPathNameByHandleW(handle, path, 4096, FILE_NAME_NORMALIZED);
             if (count && count < 4096 &&
                 std::wstring_view(path, count).find(folder.filename().native()) != std::wstring_view::npos)
                 return true;
@@ -165,14 +168,16 @@ int main(int argc, char** argv)
         LL_LOG(category, LLUtils::LogLevel::Info, "Record {} forces rotation", i);
     if (LLUtils::Logger::Flush() != LLUtils::LogResult::Success)
         return 4;
+    bool childCompleted = true;
     if (mode == "inherit")
     {
         const LLUtils::ScopedFileLock lock(folder / "inherit-lock");
-        if (!RunChild(folder))
-            return 5;
+        childCompleted = RunChild(folder);
     }
     if (LLUtils::Logger::Shutdown() != LLUtils::LogResult::Success)
         return 6;
+    if (!childCompleted)
+        return 5;
     if (mode == "bound")
         LLUtils::Logger::Emergency(std::string(1024, 'x') + "beyond the emergency byte limit");
     else

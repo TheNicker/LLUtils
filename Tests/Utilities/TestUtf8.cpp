@@ -58,7 +58,11 @@ TEST_CASE("String conversion accepts all supported representations and input for
     CHECK(StringUtility::ToAString(wide) == bytes);
     CHECK(StringUtility::ToAString(wide.c_str()) == bytes);
     CHECK(StringUtility::ToWString(bytes) == wide);
-    CHECK(StringUtility::ToNativeString(utf8) == LLUTILS_TEXT("GPU \u00e9 \u05d0 \U0001f4f7"));
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && LLUTILS_CHARSET == LLUTILS_CHARSET_UNICODE
+    CHECK(StringUtility::ToNativeString(utf8) == wide);
+#else
+    CHECK(StringUtility::ToNativeString(utf8) == bytes);
+#endif
     CHECK(StringUtility::ToDefaultString(utf8) == StringUtility::ToNativeString(utf8));
     CHECK(StringUtility::ConvertString<std::string>(std::wstring_view{}).empty());
     CHECK(StringUtility::ConvertString<std::u8string>(std::string_view{}).empty());
@@ -159,8 +163,12 @@ TEST_CASE("Renderer conversion and ASCII casing are independent of the C locale"
         if (std::setlocale(LC_CTYPE, locale) == nullptr)
             continue;
         CAPTURE(locale);
-        const LLUtils::native_string_type native = LLUTILS_TEXT("GPU \u00e9 \u05d0 \U0001f4f7");
         const std::string encoded                = "GPU \xc3\xa9 \xd7\x90 \xf0\x9f\x93\xb7";
+#if LLUTILS_PLATFORM == LLUTILS_PLATFORM_WIN32 && LLUTILS_CHARSET == LLUTILS_CHARSET_UNICODE
+        const LLUtils::native_string_type native = LLUTILS_TEXT("GPU \u00e9 \u05d0 \U0001f4f7");
+#else
+        const LLUtils::native_string_type native = encoded;
+#endif
         CHECK(StringUtility::ConvertString<std::string>(native) == encoded);
         CHECK(StringUtility::ConvertString<LLUtils::native_string_type>(encoded) == native);
         CHECK(StringUtility::ConvertString<std::wstring>("\xc3\xa9") == L"\u00e9");

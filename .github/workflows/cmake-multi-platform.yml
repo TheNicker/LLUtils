@@ -1,0 +1,82 @@
+name: CMake on multiple platforms
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    name: ${{ matrix.job_name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        job_name:
+          - linux-gcc
+          - linux-clang
+          - linux-mingw
+          - windows-msvc-ansi
+          - windows-clang-unicode
+        build_type: [Release]
+
+        include:
+          - job_name: windows-msvc-ansi
+            os: windows-latest
+            cpp_compiler: cl
+            tests_unicode: 'OFF'
+            mingw: false
+
+          - job_name: windows-clang-unicode
+            os: windows-latest
+            toolset: ClangCL
+            tests_unicode: 'ON'
+            mingw: false
+
+          - job_name: linux-gcc
+            os: ubuntu-latest
+            cpp_compiler: g++
+            tests_unicode: 'OFF'
+            mingw: false
+
+          - job_name: linux-clang
+            os: ubuntu-latest
+            cpp_compiler: clang++
+            tests_unicode: 'OFF'
+            mingw: false
+
+          - job_name: linux-mingw
+            os: ubuntu-latest
+            cpp_compiler: x86_64-w64-mingw32-g++
+            tests_unicode: 'OFF'
+            mingw: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install MinGW (only if mingw is true)
+        if: matrix.mingw == true
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+
+      - name: Configure CMake
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DLLUTILS_BUILD_TESTS=ON
+          -DLLUTILS_TESTS_UNICODE=${{ matrix.tests_unicode }}
+          ${{ matrix.toolset && format('-T {0}', matrix.toolset) || format('-DCMAKE_CXX_COMPILER={0}', matrix.cpp_compiler) }}
+          ${{ matrix.mingw && '-DCMAKE_TOOLCHAIN_FILE=mingw-w64-x86_64.cmake' || '' }}
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Run LLUtils tests
+        if: matrix.mingw == false
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure -L LLUtils
